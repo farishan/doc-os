@@ -1,4 +1,4 @@
-# DocOS / doc-os
+# DocOS / doc-os | [DEMO](https://farishan.github.io/doc-os/)
 
 OS simulation for HTML Document. This is a toy with learning purpose, NOT for serious usage.
 
