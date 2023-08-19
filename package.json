@@ -1,0 +1,17 @@
+{
+  "name": "doc-os",
+  "version": "0.0.0",
+  "description": "OS simulation for HTML Document",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx esbuild main.js --outfile=out.js --bundle --sourcemap --watch",
+    "build": "npx esbuild main.js --outfile=dist/index.js --bundle --minify"
+  },
+  "keywords": ["doc-os", "docos"],
+  "author": "Faris Han",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "esbuild": "^0.19.2"
+  }
+}
