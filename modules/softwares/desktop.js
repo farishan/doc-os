@@ -72,7 +72,7 @@ function Desktop(os) {
     const $icon = ui.createIcon(data.id, $d, data.type)
     if (data.type === 'file') {
       $icon.ondblclick = () => {
-        /* @todo handle other app */
+        /* @todo @fixme */
         os.run('File Reader', data)
       }
 
@@ -87,7 +87,7 @@ function Desktop(os) {
         const $open = document.createElement('button')
         $open.innerHTML = 'Open'
         $open.onclick = () => {
-          /* @todo handle run another software */
+          /* @todo @fixme */
           os.run('File Reader', data)
         }
         $contextMenus.push($open)

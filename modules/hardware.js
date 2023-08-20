@@ -53,9 +53,3 @@ const getInstance = () => {
 }
 
 export { Hardware, getInstance }
-
-/* @todo add test */
-// const hm = new Hardware()
-// hm.addListener('mousedown', 'mousedown1', e => {
-//   hm.removeListener('mousedown', 'mousedown1')
-// })

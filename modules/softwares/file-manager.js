@@ -232,7 +232,7 @@ function FileManager(os) {
 
       tr.ondblclick = () => {
         if (d.type === 'file') {
-          /* @todo add error handling */
+          /* @todo @fixme */
           os.run('File Reader', d)
         } else if (d.type === 'directory') {
           self.openDirectory(d)

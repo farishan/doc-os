@@ -28,5 +28,8 @@ todo:
     - [x] remove `doc-os--require`
   - [x] refactor `doc-os--rollup`, then
     - [x] remove `doc-os--rollup`
-- [ ] merge all modules into single main module with multiple formats (UMD, ES, amd, CommonJS), if needed
+- [x] merge all modules into single main module
+- [ ] finish concept docs
 - [ ] finish all `@todo`
+- [ ] [nice to have] add tests
+- [ ] [nice to have] create multiple formats (UMD, ES, amd, CommonJS), if needed

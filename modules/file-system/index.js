@@ -85,12 +85,3 @@ const getInstance = () => {
 
 export { MOVE, DELETE, CREATE_FILE, CREATE_DIRECTORY, ADD_TO_STORAGE }
 export { CustomFileSystem, getInstance }
-
-/* @todo add test */
-// const fs = new CustomFileSystem()
-// const f = fs.createFile()
-// const d = fs.createDirectory()
-// fs.read(f)
-// fs.read(d)
-// fs.addToDirectory(f, d)
-// fs.read(d)

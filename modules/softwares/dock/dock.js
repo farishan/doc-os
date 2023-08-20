@@ -36,7 +36,7 @@ function Dock() {
 
   this.refresh = () => {
     self.ui.clear()
-    /* @todo add desktop namespace */
+    /* @todo @fixme */
     softwareManager.getAllExcepts([NAMESPACE, 'Desktop']).forEach(function (app) {
       const $trigger = document.createElement('button')
       $trigger.innerHTML = app.name
