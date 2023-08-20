@@ -1,5 +1,5 @@
 import { DEFAULT_SIZE } from "./constants"
-import { getId } from "./get-id"
+import { getId } from "../libs/get-id"
 
 function FileSystemObject(options = {}) {
   this.size = DEFAULT_SIZE

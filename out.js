@@ -207,7 +207,77 @@
     };
   }
 
-  // modules/graphical-user-interface/CustomWindow.js
+  // modules/graphical-user-interface/custom-window/get-ui.js
+  function getUI({
+    minWidth,
+    minHeight,
+    options,
+    extraSize
+  }) {
+    const rootDOM = document.createElement("div");
+    rootDOM.style.padding = options.style.padding + "px";
+    rootDOM.style.boxSizing = "border-box";
+    rootDOM.style.userSelect = "none";
+    rootDOM.style.minWidth = minWidth + "px";
+    rootDOM.style.minHeight = minHeight + "px";
+    rootDOM.style.width = options.initialWidth ? options.initialWidth + extraSize + "px" : minWidth + extraSize + "px";
+    rootDOM.style.height = minHeight + extraSize + "px";
+    rootDOM.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    return rootDOM;
+  }
+
+  // modules/libs/get-random-string.js
+  function getRandomString() {
+    return Math.random().toString(36).slice(2, 5);
+  }
+
+  // modules/libs/get-id.js
+  var MAX_INT = 9007199254740991;
+  var MAX_INT_MOD = -3;
+  var id = 0;
+  var string = getRandomString();
+  function getId() {
+    if (id > MAX_INT + MAX_INT_MOD) {
+      id = 0;
+      string = getRandomString();
+    }
+    return ++id + string;
+  }
+
+  // modules/graphical-user-interface/custom-window/WindowBody.js
+  function WindowBody(options) {
+    this.$element = document.createElement("div");
+    this.$element.style.padding = options.style.padding + "px";
+    this.$element.style.overflow = "auto";
+    this.$element.style.cursor = "auto";
+    this.$element.style.boxSizing = "border-box";
+    this.$element.style.height = "100%";
+    this.reset = (dom) => {
+      if (!dom)
+        return;
+      this.$element.innerHTML = "";
+      this.$element.appendChild(dom);
+    };
+    return this;
+  }
+
+  // modules/graphical-user-interface/custom-window/get-wrapper.js
+  function getWrapper({ minWidth, minHeight, options, extraSize }) {
+    const dom = document.createElement("div");
+    dom.style.minWidth = this.minWidth - options.style.padding * 2 + "px";
+    dom.style.minHeight = this.minHeight - options.style.padding * 2 + "px";
+    dom.style.width = this.minWidth + extraSize - options.style.padding * 2 + "px";
+    dom.style.height = this.minHeight + extraSize - options.style.padding * 2 + "px";
+    dom.style.position = "absolute";
+    dom.style.border = `${options.style.borderWidth}px ${options.style.borderStyle}`;
+    dom.style.overflow = "hidden";
+    return dom;
+  }
+
+  // modules/graphical-user-interface/custom-window/WindowHeader.js
   function WindowHeader(args) {
     const options = {
       name: "",
@@ -246,25 +316,31 @@
     };
     return this;
   }
-  function WindowBody(options) {
-    this.$element = document.createElement("div");
-    this.$element.style.padding = options.style.padding + "px";
-    this.$element.style.overflow = "auto";
-    this.$element.style.cursor = "auto";
-    this.$element.style.boxSizing = "border-box";
-    this.$element.style.height = "100%";
-    this.reset = (dom) => {
-      if (!dom)
-        return;
-      this.$element.innerHTML = "";
-      this.$element.appendChild(dom);
-    };
-    return this;
+
+  // modules/graphical-user-interface/custom-window/get-background.js
+  function getBackground() {
+    const dom = document.createElement("div");
+    dom.style.position = "absolute";
+    dom.style.left = 0;
+    dom.style.top = 0;
+    dom.style.right = 0;
+    dom.style.bottom = 0;
+    dom.style.zIndex = -1;
+    dom.style.opacity = 0.9;
+    return dom;
   }
+
+  // modules/graphical-user-interface/custom-window/get-clicked-resizer.js
+  function getClickedResizer(dom, threshold, x, y) {
+    const n = y > dom.offsetTop && y < dom.offsetTop + threshold, e = x < dom.offsetLeft + dom.offsetWidth && x > dom.offsetLeft + dom.offsetWidth - threshold, s = y < dom.offsetTop + dom.offsetHeight && y > dom.offsetTop + dom.offsetHeight - threshold, w = x > dom.offsetLeft && x < dom.offsetLeft + threshold;
+    return s && e ? "se" : s && w ? "sw" : n && e ? "ne" : n && w ? "nw" : n ? "n" : e ? "e" : s ? "s" : w ? "w" : "";
+  }
+
+  // modules/graphical-user-interface/custom-window/index.js
   function CustomWindow(args, themeManager4) {
     const self = this;
     const options = {
-      id: Math.random().toString(36).slice(2, 9),
+      id: getId(),
       style: {
         padding: 8,
         borderWidth: 1,
@@ -284,9 +360,19 @@
     this.padding = options.style.padding;
     this.cursorThreshold = options.style.padding;
     this.eventListener = { close: [] };
-    this.$window = document.createElement("div");
-    this.$background = document.createElement("div");
-    this.$wrapper = document.createElement("div");
+    this.$window = getUI({
+      minWidth: this.minWidth,
+      minHeight: this.minHeight,
+      options,
+      extraSize
+    });
+    this.$background = getBackground();
+    this.$wrapper = getWrapper({
+      minWidth: this.minWidth,
+      minHeight: this.minHeight,
+      options,
+      extraSize
+    });
     this.$wrapper.appendChild(this.$background);
     this.$window.appendChild(this.$wrapper);
     this.$background.style.backgroundColor = themeManager4.getTheme().style.body.backgroundColor;
@@ -299,35 +385,6 @@
     this.$wrapper.appendChild(this.header.$element);
     this.body = new WindowBody(options);
     this.$wrapper.appendChild(this.body.$element);
-    this.$window.style.padding = options.style.padding + "px";
-    this.$window.style.boxSizing = "border-box";
-    this.$window.style.userSelect = "none";
-    this.$window.style.minWidth = this.minWidth + "px";
-    this.$window.style.minHeight = this.minHeight + "px";
-    if (options.initialWidth) {
-      this.$window.style.width = options.initialWidth + extraSize + "px";
-    } else {
-      this.$window.style.width = this.minWidth + extraSize + "px";
-    }
-    this.$window.style.height = this.minHeight + extraSize + "px";
-    this.$background.style.position = "absolute";
-    this.$background.style.left = 0;
-    this.$background.style.top = 0;
-    this.$background.style.right = 0;
-    this.$background.style.bottom = 0;
-    this.$background.style.zIndex = -1;
-    this.$background.style.opacity = 0.9;
-    this.$wrapper.style.minWidth = this.minWidth - options.style.padding * 2 + "px";
-    this.$wrapper.style.minHeight = this.minHeight - options.style.padding * 2 + "px";
-    this.$wrapper.style.width = this.minWidth + extraSize - options.style.padding * 2 + "px";
-    this.$wrapper.style.height = this.minHeight + extraSize - options.style.padding * 2 + "px";
-    this.$wrapper.style.position = "absolute";
-    this.$wrapper.style.border = `${options.style.borderWidth}px ${options.style.borderStyle}`;
-    this.$wrapper.style.overflow = "hidden";
-    this.$window.oncontextmenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
     function handleClose() {
       self.$window.remove();
       self.eventListener.close.forEach((listener) => {
@@ -340,8 +397,7 @@
     this.eventListener[eventKey].push(fn);
   };
   CustomWindow.prototype.getClickedResizer = function(x, y) {
-    const n = y > this.$window.offsetTop && y < this.$window.offsetTop + this.cursorThreshold, e = x < this.$window.offsetLeft + this.$window.offsetWidth && x > this.$window.offsetLeft + this.$window.offsetWidth - this.cursorThreshold, s = y < this.$window.offsetTop + this.$window.offsetHeight && y > this.$window.offsetTop + this.$window.offsetHeight - this.cursorThreshold, w = x > this.$window.offsetLeft && x < this.$window.offsetLeft + this.cursorThreshold;
-    return s && e ? "se" : s && w ? "sw" : n && e ? "ne" : n && w ? "nw" : n ? "n" : e ? "e" : s ? "s" : w ? "w" : "";
+    return getClickedResizer(this.$window, this.cursorThreshold, x, y);
   };
   CustomWindow.prototype.setContent = function(element) {
     this.body.reset(element);
@@ -926,8 +982,6 @@
 
   // modules/file-system/constants.js
   var NAMESPACE = "CustomFileSystem";
-  var MAX_INT = 9007199254740991;
-  var MAX_INT_MOD = -3;
   var DEFAULT_SIZE = 1;
   var ADD_TO_STORAGE = "addToStorage";
   var CREATE_FILE = "createFile";
@@ -936,22 +990,6 @@
   var MOVE = "move";
   var TYPE_FILE2 = "file";
   var TYPE_DIRECTORY = "directory";
-
-  // modules/file-system/get-random-string.js
-  function getRandomString() {
-    return Math.random().toString(36).slice(2, 5);
-  }
-
-  // modules/file-system/get-id.js
-  var id = 0;
-  var string = getRandomString();
-  function getId() {
-    if (id > MAX_INT + MAX_INT_MOD) {
-      id = 0;
-      string = getRandomString();
-    }
-    return ++id + string;
-  }
 
   // modules/file-system/FileSystemObject.js
   function FileSystemObject(options = {}) {

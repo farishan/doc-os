@@ -1,4 +1,4 @@
-import { CustomWindow } from "./CustomWindow"
+import { CustomWindow } from "./custom-window"
 import { getInstance as getHardware } from "../hardware"
 import { getInstance as getThemeManager } from "./ThemeManager"
 
