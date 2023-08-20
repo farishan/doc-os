@@ -23,10 +23,10 @@ flow:
 
 todo:
 
-- [ ] refactor to ES modules format, move to `modules`
+- [x] refactor to ES modules format, move to `modules`
   - [x] refactor `doc-os--require`, then
     - [x] remove `doc-os--require`
-  - [ ] refactor `doc-os--rollup`, then
-    - [ ] remove `doc-os--rollup`
+  - [x] refactor `doc-os--rollup`, then
+    - [x] remove `doc-os--rollup`
 - [ ] merge all modules into single main module with multiple formats (UMD, ES, amd, CommonJS), if needed
 - [ ] finish all `@todo`

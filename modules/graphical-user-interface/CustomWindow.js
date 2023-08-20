@@ -55,6 +55,7 @@ function WindowBody(options) {
   this.$element.style.height = '100%'
 
   this.reset = (dom) => {
+    if (!dom) return
     this.$element.innerHTML = ''
     this.$element.appendChild(dom)
   }

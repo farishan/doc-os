@@ -301,6 +301,8 @@
     this.$element.style.boxSizing = "border-box";
     this.$element.style.height = "100%";
     this.reset = (dom) => {
+      if (!dom)
+        return;
       this.$element.innerHTML = "";
       this.$element.appendChild(dom);
     };
@@ -798,7 +800,7 @@
     };
   }
 
-  // modules/storage.js
+  // modules/storage/index.js
   var instance6;
   function Storage() {
     let size = 0;
@@ -1424,18 +1426,127 @@
     };
   }
 
-  // modules/operating-system.js
+  // modules/command-line-interface/parse-line-command.js
+  function parseLineCommand(lineCommand) {
+    const characters = lineCommand.split("");
+    const words = [];
+    let word = "";
+    let shouldSkipSpace = true;
+    characters.forEach((character) => {
+      if (shouldSkipSpace && character === " ") {
+        words.push(word);
+        word = "";
+      } else if (shouldSkipSpace && character === '"') {
+        shouldSkipSpace = false;
+      } else if (shouldSkipSpace === false && character === '"') {
+        shouldSkipSpace = true;
+      } else {
+        word += character;
+      }
+    });
+    words.push(word);
+    word = "";
+    return words;
+  }
+  var parse_line_command_default = parseLineCommand;
+
+  // modules/command-line-interface/index.js
+  function CommandLineInterface() {
+    this.debug = false;
+    this.functionMap = {};
+    this.register = function(key, value) {
+      this.functionMap[key] = value;
+    };
+    this.execute = function(...args) {
+      if (args.length === 2) {
+        this.executeByKey(args[0], args[1]);
+      } else {
+        this.executeLineCommand(args[0]);
+      }
+    };
+    this.executeByKey = function(key, payload) {
+      if (this.debug)
+        console.log(`[${performance.now().toFixed(2)}] executing: ${key}`);
+      if (!this.functionMap[key])
+        throw Error("Unknown function: " + key);
+      return this.functionMap[key](payload);
+    };
+    this.executeLineCommand = function(lineCommand) {
+      const args = parse_line_command_default(lineCommand);
+      const functionKey = args[0];
+      if (!this.functionMap[functionKey])
+        throw Error("Invalid line command: " + functionKey);
+      this.executeByKey(functionKey, args[1]);
+    };
+    this.executeLater = function(key, delay) {
+      const self = this;
+      setTimeout(() => {
+        self.execute(key);
+      }, delay);
+    };
+    return this;
+  }
+  var instance8 = new CommandLineInterface();
+  var getInstance8 = () => {
+    if (!instance8)
+      instance8 = new CommandLineInterface();
+    return instance8;
+  };
+
+  // modules/softwares/terminal.js
   var ui7 = getInstance5();
+  var cli = getInstance8();
+  function Terminal() {
+    this.name = "Terminal";
+    const logs = [];
+    const $logs = document.createElement("div");
+    cli.register("echo", (payload) => {
+      logs.push(payload);
+      renderLogs();
+    });
+    function renderLogs() {
+      $logs.innerHTML = "";
+      for (let index = logs.length - 1; index >= 0; index--) {
+        const log = logs[index];
+        $logs.innerHTML += `${log}<br>`;
+      }
+    }
+    this.getContent = function() {
+      const $content = document.createElement("div");
+      const input = document.createElement("input");
+      input.placeholder = 'echo "hello world"';
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          console.log(input.value);
+          cli.execute(input.value);
+          input.value = "";
+        }
+      });
+      $content.append(input);
+      $content.append($logs);
+      return $content;
+    };
+    this.start = () => {
+      const customWindow = ui7.createWindow({ name: this.name, resizeable: true, draggable: true });
+      ui7.sendToTop(customWindow);
+      const $content = this.getContent();
+      ui7.setWindowContent(this.name, $content);
+    };
+  }
+
+  // modules/operating-system.js
+  var ui8 = getInstance5();
   var softwareManager2 = getInstance3();
   function OperatingSystem() {
     this.boot = () => {
-      ui7.init();
+      ui8.init();
       this.install(new Dock());
       this.install(new Settings());
       this.install(new CustomFileReader());
-      this.install(new Desktop(instance8));
+      this.install(new Desktop(instance9));
       this.install(new WindowCreator());
-      this.install(new FileManager(instance8));
+      this.install(new FileManager(instance9));
+      this.install(new Terminal());
       this.get(NAMESPACE).start();
       this.get(NAMESPACE2).start();
     };
@@ -1445,15 +1556,15 @@
   }
   OperatingSystem.prototype.get = softwareManager2.get.bind(softwareManager2);
   OperatingSystem.prototype.install = softwareManager2.install.bind(softwareManager2);
-  var instance8 = new OperatingSystem();
-  var getInstance8 = () => {
-    if (!instance8)
-      instance8 = new OperatingSystem();
-    return instance8;
+  var instance9 = new OperatingSystem();
+  var getInstance9 = () => {
+    if (!instance9)
+      instance9 = new OperatingSystem();
+    return instance9;
   };
 
   // main.js
-  var os = getInstance8();
+  var os = getInstance9();
   os.boot();
 })();
 //# sourceMappingURL=out.js.map

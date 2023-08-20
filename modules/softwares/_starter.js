@@ -1,13 +1,15 @@
-import * as UI from '../GraphicalUserInterface/GraphicalUserInterface'
+import { getInstance } from '../graphical-user-interface'
 
-const ui = UI.getInstance()
+const ui = getInstance()
 
 function MyApp() {
+  /* `this.name` is required */
   this.name = 'My App'
 
   this.getContent = function () {
     const $content = document.createElement('div')
     $content.textContent = 'My App'
+    return $content
   }
 
   this.start = () => {
@@ -21,4 +23,4 @@ function MyApp() {
   }
 }
 
-return MyApp
+export { MyApp }

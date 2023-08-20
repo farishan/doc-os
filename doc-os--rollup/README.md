@@ -1,1 +1,0 @@
-While "master" branch feature count is less than "archive" branch's, always compare both branches.

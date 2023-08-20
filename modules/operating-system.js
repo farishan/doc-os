@@ -8,6 +8,7 @@ import { getInstance as getSoftwareManager } from "./software-manager";
 import { FileManager as FileManagerApp } from "./softwares/file-manager";
 import { CustomFileReader as FileReaderApp } from "./softwares/file-reader";
 import { WindowCreator as WindowCreatorApp } from "./softwares/window-creator";
+import { Terminal } from "./softwares/terminal";
 
 const ui = getGUI()
 const softwareManager = getSoftwareManager()
@@ -23,6 +24,7 @@ function OperatingSystem() {
     this.install(new Desktop(instance))
     this.install(new WindowCreatorApp())
     this.install(new FileManagerApp(instance))
+    this.install(new Terminal())
 
     /* Run default softwares */
     this.get(NAMESPACE_DOCK).start()
