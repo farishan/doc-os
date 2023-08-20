@@ -75,6 +75,13 @@ function EventManager() {
    */
   this.has = (scope, key) => eventsByScope[scope] && eventsByScope[scope][key] ? true : false
 
+  this.dispatch = (scope, event, data) => {
+    for (let index = 0; index < Object.keys(eventsByScope[scope]).length; index++) {
+      const key = Object.keys(eventsByScope[scope])[index];
+      eventsByScope[scope][key]({ event, data })
+    }
+  }
+
   return this
 }
 

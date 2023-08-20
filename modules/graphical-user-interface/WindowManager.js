@@ -132,8 +132,8 @@ function WindowManager() {
     if (resizeable) $window.onmousemove = getProperCursor
 
     /* [side-effects] add custom window's listener to UI manager window event listeners */
-    hardware.addListener(customWindow.id, eventScopesByKey.mousemove, dragAndResize)
-    hardware.addListener(customWindow.id, eventScopesByKey.mouseup, () => {
+    hardware.addListener(`customWindow_${customWindow.id}`, eventScopesByKey.mousemove, dragAndResize)
+    hardware.addListener(`customWindow_${customWindow.id}`, eventScopesByKey.mouseup, () => {
       isMouseDown = false
       isResizing = false
       isDragging = false

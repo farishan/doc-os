@@ -1,66 +1,70 @@
 (() => {
-  // modules/softwares/dock/dock.ui.js
-  function DockUI(theme) {
-    const $element = document.createElement("div");
-    $element.style.boxSizing = "border-box";
-    $element.style.position = "fixed";
-    $element.style.zIndex = 9;
-    $element.style.left = 0;
-    $element.style.bottom = 0;
-    $element.style.width = "100%";
-    $element.style.padding = "8px";
-    $element.style.boxSizing = "border-box";
-    $element.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $element.style.backgroundColor = theme.backgroundColor;
-    const $layout = document.createElement("table");
-    const $menuTriggerTd = document.createElement("td");
-    $menuTriggerTd.setAttribute("width", "100%");
-    const $menuTrigger = document.createElement("button");
-    $menuTrigger.innerHTML = "Menu";
-    $menuTriggerTd.appendChild($menuTrigger);
-    $layout.appendChild($menuTriggerTd);
-    const $clockTd = document.createElement("td");
-    const $clock = document.createElement("span");
-    const now = /* @__PURE__ */ new Date();
-    $clock.innerHTML = `${now.getHours()}:${now.getMinutes()}`;
-    $clockTd.appendChild($clock);
-    $layout.appendChild($clockTd);
-    $element.appendChild($layout);
-    const $menu = document.createElement("div");
-    $menu.style.display = "none";
-    $menu.style.position = "absolute";
-    $menu.style.left = 0;
-    $menu.style.width = "200px";
-    $menu.style.height = "200px";
-    $menu.style.padding = "8px";
-    $menu.style.borderRight = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $menu.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $menu.style.backgroundColor = theme.backgroundColor;
-    $element.appendChild($menu);
-    setTimeout(() => {
-      $menu.style.bottom = $element.offsetHeight + "px";
-    }, 200);
-    this.setTheme = function(theme2) {
-      $element.style.backgroundColor = theme2.style.body.backgroundColor;
-      $menu.style.backgroundColor = theme2.style.body.backgroundColor;
-    };
-    this.addToMenu = (element) => {
-      element.style.display = "block";
-      $menu.appendChild(element);
-    };
-    this.clear = () => $menu.innerHTML = "";
-    this.closeMenu = () => $menu.style.display = "none";
-    $menuTrigger.onclick = () => {
-      if ($menu.style.display === "none")
-        $menu.style.display = "block";
-      else if ($menu.style.display === "block")
-        $menu.style.display = "none";
-    };
-    this.getMenuElement = () => $menu;
-    this.getMenuTrigger = () => $menuTrigger;
-    this.render = () => document.body.appendChild($element);
-    this.destroy = () => $element.remove();
+  // modules/command-line-interface/parse-line-command.js
+  function parseLineCommand(lineCommand) {
+    const characters = lineCommand.split("");
+    const words = [];
+    let word = "";
+    let shouldSkipSpace = true;
+    characters.forEach((character) => {
+      if (shouldSkipSpace && character === " ") {
+        words.push(word);
+        word = "";
+      } else if (shouldSkipSpace && character === '"') {
+        shouldSkipSpace = false;
+      } else if (shouldSkipSpace === false && character === '"') {
+        shouldSkipSpace = true;
+      } else {
+        word += character;
+      }
+    });
+    words.push(word);
+    word = "";
+    return words;
   }
+  var parse_line_command_default = parseLineCommand;
+
+  // modules/command-line-interface/index.js
+  function CommandLineInterface() {
+    this.debug = false;
+    this.functionMap = {};
+    this.register = function(key, value) {
+      this.functionMap[key] = value;
+    };
+    this.execute = function(...args) {
+      if (args.length === 2) {
+        this.executeByKey(args[0], args[1]);
+      } else {
+        this.executeLineCommand(args[0]);
+      }
+    };
+    this.executeByKey = function(key, payload) {
+      if (this.debug)
+        console.log(`[${performance.now().toFixed(2)}] executing: ${key}`);
+      if (!this.functionMap[key])
+        throw Error("Unknown function: " + key);
+      return this.functionMap[key](payload);
+    };
+    this.executeLineCommand = function(lineCommand) {
+      const args = parse_line_command_default(lineCommand);
+      const functionKey = args[0];
+      if (!this.functionMap[functionKey])
+        throw Error("Invalid line command: " + functionKey);
+      this.executeByKey(functionKey, args[1]);
+    };
+    this.executeLater = function(key, delay) {
+      const self = this;
+      setTimeout(() => {
+        self.execute(key);
+      }, delay);
+    };
+    return this;
+  }
+  var instance = new CommandLineInterface();
+  var getInstance = () => {
+    if (!instance)
+      instance = new CommandLineInterface();
+    return instance;
+  };
 
   // modules/event-manager.js
   function EventManager() {
@@ -95,17 +99,23 @@
         delete eventsByScope[scope];
     };
     this.has = (scope, key) => eventsByScope[scope] && eventsByScope[scope][key] ? true : false;
+    this.dispatch = (scope, event, data) => {
+      for (let index = 0; index < Object.keys(eventsByScope[scope]).length; index++) {
+        const key = Object.keys(eventsByScope[scope])[index];
+        eventsByScope[scope][key]({ event, data });
+      }
+    };
     return this;
   }
-  var instance = new EventManager();
-  var getInstance = () => {
-    if (!instance)
-      instance = new EventManager();
-    return instance;
+  var instance2 = new EventManager();
+  var getInstance2 = () => {
+    if (!instance2)
+      instance2 = new EventManager();
+    return instance2;
   };
 
   // modules/hardware.js
-  var eventManager = getInstance();
+  var eventManager = getInstance2();
   function Hardware() {
     eventManager.set("resize");
     eventManager.set("keyup");
@@ -117,85 +127,28 @@
     eventManager.set("mouseleave");
     eventManager.set("contextmenu");
   }
-  Hardware.prototype.addListener = function(id, event, cb) {
-    if (!event || !id || !cb)
-      throw Error("Invalid arguments.", { event, id, cb });
+  Hardware.prototype.addListener = function(id2, event, cb) {
+    if (!event || !id2 || !cb)
+      throw Error("Invalid arguments.", { event, id: id2, cb });
     if (!eventManager.isset(event))
       throw Error("Unknown event.", event);
-    eventManager.add(event, id, cb);
+    eventManager.add(event, id2, cb);
     window.addEventListener(event, cb);
   };
-  Hardware.prototype.removeListener = function(id, event) {
-    if (!event || !id)
-      throw Error("Invalid arguments.", { event, id });
+  Hardware.prototype.removeListener = function(id2, event) {
+    if (!event || !id2)
+      throw Error("Invalid arguments.", { event, id: id2 });
     if (!eventManager.isset(event))
       throw Error("Unknown event.", event);
-    if (!eventManager.has(event, id))
-      throw Error(`No ${event} listener with this id: ${id}`);
-    window.removeEventListener(event, eventManager.get(event, id));
-    eventManager.remove(event, id);
+    if (!eventManager.has(event, id2))
+      throw Error(`No ${event} listener with this id: ${id2}`);
+    window.removeEventListener(event, eventManager.get(event, id2));
+    eventManager.remove(event, id2);
   };
-  var instance2 = new Hardware();
-  var getInstance2 = () => {
-    if (!instance2)
-      instance2 = new Hardware();
-    return instance2;
-  };
-
-  // modules/software-manager.js
-  var instance3;
-  function SoftwareManager() {
-    this.accessKey = "software";
-    this.software = /* @__PURE__ */ new Map();
-    this.listener = {
-      install: []
-    };
-  }
-  SoftwareManager.prototype.install = function(software) {
-    if (!software)
-      throw Error("Undefined software.");
-    if (!software.name)
-      throw Error("Software name is required.");
-    if (!software.start)
-      throw Error("Software start function is required.");
-    this.software.set(software.name, software);
-    this.listener.install.forEach((fn) => fn());
-  };
-  SoftwareManager.prototype.getAllExcepts = function(filter) {
-    let softwares = [];
-    for (const [key, value] of this.software) {
-      if (!filter.includes(key))
-        softwares.push(value);
-    }
-    return softwares;
-  };
-  SoftwareManager.prototype.getAllExcept = function(name) {
-    let softwares = [];
-    for (const [key, value] of this.software) {
-      if (key !== name)
-        softwares.push(value);
-    }
-    return softwares;
-  };
-  SoftwareManager.prototype.get = function(name) {
-    if (!name || !this.software.get(name))
-      throw Error("Unknown software.");
-    return this.software.get(name);
-  };
-  SoftwareManager.prototype.run = function(key, payload) {
-    const s = this.software.get(key);
-    if (!s)
-      throw Error("unknown software:", key);
-    s.start(payload);
-  };
-  SoftwareManager.prototype.addEventListener = function(event, cb) {
-    if (!this.listener[event])
-      throw Error("Unknown event.", event);
-    this.listener[event].push(cb);
-  };
+  var instance3 = new Hardware();
   var getInstance3 = () => {
     if (!instance3)
-      instance3 = new SoftwareManager();
+      instance3 = new Hardware();
     return instance3;
   };
 
@@ -203,13 +156,13 @@
   var TYPE_FILE = "file";
   var TYPE_FOLDER = "folder";
   var TYPE_APP = "app";
-  var hardware = getInstance2();
+  var hardware = getInstance3();
   var eventScopesByKey = {
     mousemove: "mousemove",
     mouseup: "mouseup"
   };
   function IconManager() {
-    this.createIcon = function(id, dom, type) {
+    this.createIcon = function(id2, dom, type) {
       let isMouseDown = false;
       let isDragging = false;
       let startPoint = { x: 0, y: 0 };
@@ -238,14 +191,14 @@
         distance.y = Math.abs(startPoint.y - rootDOM.offsetTop);
         rootDOM.style.cursor = "grabbing";
       };
-      hardware.addListener(id, eventScopesByKey.mousemove, (ev) => {
+      hardware.addListener(id2, eventScopesByKey.mousemove, (ev) => {
         if (!isMouseDown)
           return;
         isDragging = true;
         rootDOM.style.left = ev.clientX - distance.x + "px";
         rootDOM.style.top = ev.clientY - distance.y + "px";
       });
-      hardware.addListener(id, eventScopesByKey.mouseup, () => {
+      hardware.addListener(id2, eventScopesByKey.mouseup, () => {
         isMouseDown = false;
         isDragging = false;
         rootDOM.style.cursor = "grab";
@@ -497,7 +450,7 @@
   };
 
   // modules/graphical-user-interface/WindowManager.js
-  var hardware2 = getInstance2();
+  var hardware2 = getInstance3();
   var themeManager = getInstance4();
   var BODY2 = document.body;
   var eventScopesByKey2 = {
@@ -602,8 +555,8 @@
       $window.onmousedown = prepareForInteraction;
       if (resizeable)
         $window.onmousemove = getProperCursor;
-      hardware2.addListener(customWindow.id, eventScopesByKey2.mousemove, dragAndResize);
-      hardware2.addListener(customWindow.id, eventScopesByKey2.mouseup, () => {
+      hardware2.addListener(`customWindow_${customWindow.id}`, eventScopesByKey2.mousemove, dragAndResize);
+      hardware2.addListener(`customWindow_${customWindow.id}`, eventScopesByKey2.mouseup, () => {
         isMouseDown = false;
         isResizing = false;
         isDragging = false;
@@ -661,7 +614,7 @@
   }
 
   // modules/graphical-user-interface/ContextMenuManager.js
-  var hardware3 = getInstance2();
+  var hardware3 = getInstance3();
   var themeManager2 = getInstance4();
   var BODY3 = document.body;
   function ContextMenuManager() {
@@ -764,67 +717,153 @@
     return instance5;
   };
 
-  // modules/softwares/dock/dock.js
+  // modules/softwares/terminal.js
   var ui = getInstance5();
-  var hardware4 = getInstance2();
-  var softwareManager = getInstance3();
-  var NAMESPACE = "Dock";
-  function Dock() {
-    const self = this;
-    this.name = NAMESPACE;
-    softwareManager.addEventListener("install", () => {
-      this.refresh();
+  var cli = getInstance();
+  function Terminal() {
+    this.name = "Terminal";
+    const logs = [];
+    const $logs = document.createElement("div");
+    cli.register("echo", (payload) => {
+      logs.push(payload);
+      renderLogs();
     });
-    this.ui = new DockUI(ui.getTheme());
-    ui.addThemeListener((theme) => self.ui.setTheme(theme));
-    hardware4.addListener(NAMESPACE, "mousedown", (e) => {
-      if (e.target !== self.ui.getMenuElement() && e.target !== self.ui.getMenuTrigger() && e.target instanceof HTMLButtonElement === false) {
-        self.ui.closeMenu();
+    function renderLogs() {
+      $logs.innerHTML = "";
+      for (let index = logs.length - 1; index >= 0; index--) {
+        const log = logs[index];
+        $logs.innerHTML += `${log}<br>`;
       }
-    });
-    this.refresh = () => {
-      self.ui.clear();
-      softwareManager.getAllExcepts([NAMESPACE, "Desktop"]).forEach(function(app) {
-        const $trigger = document.createElement("button");
-        $trigger.innerHTML = app.name;
-        $trigger.onclick = () => app.start();
-        self.ui.addToMenu($trigger);
+    }
+    this.getContent = function() {
+      const $content = document.createElement("div");
+      const input = document.createElement("input");
+      input.placeholder = 'echo "hello world"';
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          console.log(input.value);
+          cli.execute(input.value);
+          input.value = "";
+        }
       });
+      $content.append(input);
+      $content.append($logs);
+      return $content;
     };
     this.start = () => {
-      this.ui.render();
-      this.refresh();
-    };
-    this.stop = () => {
-      this.ui.destroy();
+      const customWindow = ui.createWindow({ name: this.name, resizeable: true, draggable: true });
+      ui.sendToTop(customWindow);
+      const $content = this.getContent();
+      ui.setWindowContent(this.name, $content);
     };
   }
 
-  // modules/storage/index.js
+  // modules/softwares/settings.js
+  var ui2 = getInstance5();
+  function Settings() {
+    this.name = "Settings";
+    this.getContent = function() {
+      const $content = document.createElement("div");
+      const $darkTheme = document.createElement("button");
+      $darkTheme.onclick = function() {
+        ui2.setTheme("dark");
+      };
+      $darkTheme.innerHTML = "Change to Dark Theme";
+      $content.appendChild($darkTheme);
+      const $lightTheme = document.createElement("button");
+      $lightTheme.onclick = function() {
+        ui2.setTheme("light");
+      };
+      $lightTheme.innerHTML = "Change to Light Theme";
+      $content.appendChild($lightTheme);
+      return $content;
+    };
+    this.start = () => {
+      const customWindow = ui2.createWindow({ name: this.name, resizeable: true, draggable: true });
+      ui2.sendToTop(customWindow);
+      const $content = this.getContent();
+      ui2.setWindowContent(this.name, $content);
+    };
+  }
+
+  // modules/software-manager.js
   var instance6;
+  function SoftwareManager() {
+    this.accessKey = "software";
+    this.software = /* @__PURE__ */ new Map();
+    this.listener = {
+      install: []
+    };
+  }
+  SoftwareManager.prototype.install = function(software) {
+    if (!software)
+      throw Error("Undefined software.");
+    if (!software.name)
+      throw Error("Software name is required.");
+    if (!software.start)
+      throw Error("Software start function is required.");
+    this.software.set(software.name, software);
+    this.listener.install.forEach((fn) => fn());
+  };
+  SoftwareManager.prototype.getAllExcepts = function(filter) {
+    let softwares = [];
+    for (const [key, value] of this.software) {
+      if (!filter.includes(key))
+        softwares.push(value);
+    }
+    return softwares;
+  };
+  SoftwareManager.prototype.getAllExcept = function(name) {
+    let softwares = [];
+    for (const [key, value] of this.software) {
+      if (key !== name)
+        softwares.push(value);
+    }
+    return softwares;
+  };
+  SoftwareManager.prototype.get = function(name) {
+    if (!name || !this.software.get(name))
+      throw Error("Unknown software.");
+    return this.software.get(name);
+  };
+  SoftwareManager.prototype.run = function(key, payload) {
+    const s = this.software.get(key);
+    if (!s)
+      throw Error("unknown software:", key);
+    s.start(payload);
+  };
+  SoftwareManager.prototype.addEventListener = function(event, cb) {
+    if (!this.listener[event])
+      throw Error("Unknown event.", event);
+    this.listener[event].push(cb);
+  };
+  var getInstance6 = () => {
+    if (!instance6)
+      instance6 = new SoftwareManager();
+    return instance6;
+  };
+
+  // modules/storage/index.js
   function Storage() {
-    let size = 0;
     const data = /* @__PURE__ */ new Map();
+    let size = 0;
     this.add = function(k, v) {
       if (!k || !v)
-        throw Error("Invalid arguments.");
+        throw Error("Invalid arguments.", { k, v });
       if (v.size)
         size += v.size;
       if (!data.has(k)) {
         data.set(k, v);
       } else {
         const pathObject = data.get(k);
-        if (pathObject.data) {
-          if (pathObject.size && v.size)
-            pathObject.size += v.size;
-          pathObject.data.set(v.id, v);
-        }
+        if (!pathObject.data)
+          return;
+        if (pathObject.size && v.size)
+          pathObject.size += v.size;
+        pathObject.data.set(v.id, v);
       }
     };
-    this.get = function(path) {
-      if (!path)
-        throw Error("Invalid path.", path);
-      let result = /* @__PURE__ */ new Map();
+    this.getDirectories = (path, result) => {
       data.forEach((v, k) => {
         if (path === "/") {
           if ((k.match(/\//g) || []).length === 2)
@@ -837,34 +876,35 @@
           }
         }
       });
+    };
+    this.getFiles = (path, result) => {
       const pathObject = data.get(path);
-      if (pathObject) {
-        if (pathObject.data) {
-          pathObject.data.forEach((d) => result.set(d.id, d));
-        }
-      }
+      if (!pathObject)
+        return;
+      if (!pathObject.data)
+        return;
+      pathObject.data.forEach((d) => result.set(d.id, d));
+    };
+    this.get = function(path) {
+      if (!path)
+        throw Error("Invalid path.", path);
+      let result = /* @__PURE__ */ new Map();
+      this.getDirectories(path, result);
+      this.getFiles(path, result);
       return result;
     };
-    this.deletePathData = (path, key) => {
-      return data.get(path).data.delete(key);
-    };
-    this.getSize = function() {
-      return size;
-    };
-    this.set = function(k, v) {
-      data.set(k, v);
-    };
+    this.deletePathData = (path, key) => data.get(path).data.delete(key);
+    this.getSize = () => size;
+    this.set = (k, v) => data.set(k, v);
+    this.deleteByPath = (path) => data.delete(path);
     this.bulkModify = function(parameter, modifier) {
       data.forEach((v, k) => {
-        if (k.startsWith(parameter)) {
-          v.path = modifier + k.substring(1);
-          data.set(v.path, v);
-          data.delete(k);
-        }
+        if (!k.startsWith(parameter))
+          return;
+        v.path = modifier + k.substring(1);
+        data.set(v.path, v);
+        data.delete(k);
       });
-    };
-    this.deleteByPath = function(path) {
-      data.delete(path);
     };
     this.delete = function(object) {
       if (object.type === "directory") {
@@ -876,85 +916,98 @@
         pathObject.data.delete(object.id);
       }
     };
-    this.log = () => {
-      console.info(data);
-    };
+    this.log = () => console.info(data);
   }
-  var getInstance6 = () => {
-    if (!instance6)
-      instance6 = new Storage();
-    return instance6;
-  };
+  var storage = new Storage();
 
-  // modules/file-system.js
-  var instance7;
-  var storage = getInstance6();
-  function CustomFileSystem() {
-    const MAX_INT = 9007199254740991;
-    const MAX_INT_MOD = -3;
-    const DEFAULT_SIZE = 1;
-    let id = 0;
-    let string = getRandomString();
-    this.listener = /* @__PURE__ */ new Map();
-    this.directoryListener = {};
-    function getRandomString() {
-      return Math.random().toString(36).slice(2, 5);
+  // modules/file-system/constants.js
+  var NAMESPACE = "CustomFileSystem";
+  var MAX_INT = 9007199254740991;
+  var MAX_INT_MOD = -3;
+  var DEFAULT_SIZE = 1;
+  var ADD_TO_STORAGE = "addToStorage";
+  var CREATE_FILE = "createFile";
+  var CREATE_DIRECTORY = "createDirectory";
+  var DELETE = "delete";
+  var MOVE = "move";
+  var TYPE_FILE2 = "file";
+  var TYPE_DIRECTORY = "directory";
+
+  // modules/file-system/get-random-string.js
+  function getRandomString() {
+    return Math.random().toString(36).slice(2, 5);
+  }
+
+  // modules/file-system/get-id.js
+  var id = 0;
+  var string = getRandomString();
+  function getId() {
+    if (id > MAX_INT + MAX_INT_MOD) {
+      id = 0;
+      string = getRandomString();
     }
-    function getId() {
-      if (id > MAX_INT + MAX_INT_MOD) {
-        id = 0;
-        string = getRandomString();
-      }
-      return ++id + string;
-    }
-    function createFileSystemObject(options = {}) {
-      const { type, name, path } = options;
-      const id2 = type.slice(0, 1) + getId();
-      return {
-        id: id2,
-        path: type === "directory" ? path + id2 + "/" : path,
-        type,
-        name: name || type,
-        size: DEFAULT_SIZE
-      };
-    }
-    this.createFile = function(options = {}) {
-      const file = createFileSystemObject({
-        type: "file",
-        ...options
-      });
-      this.listener.forEach((v, k) => {
-        v({ event: CustomFileSystem.CREATE_FILE, data: file });
-      });
-      return file;
-    };
-    this.createDirectory = function(options = {}) {
-      const directory = {
-        ...createFileSystemObject({ type: "directory", ...options }),
+    return ++id + string;
+  }
+
+  // modules/file-system/FileSystemObject.js
+  function FileSystemObject(options = {}) {
+    this.size = DEFAULT_SIZE;
+    this.type = options.type || "file";
+    this.id = this.type.slice(0, 1) + getId();
+    this.name = options.name || this.type;
+    this.path = this.type === "directory" ? options.path + this.id + "/" : options.path;
+    return this;
+  }
+
+  // modules/file-system/directory-manager.js
+  var eventManager2 = getInstance2();
+  function DirectoryManager() {
+    this.create = function(options = {}) {
+      const data = {
+        ...new FileSystemObject({ type: "directory", ...options }),
         data: /* @__PURE__ */ new Map()
       };
-      this.listener.forEach((v, k) => {
-        v({ event: CustomFileSystem.CREATE_DIRECTORY, data: directory });
-      });
-      return directory;
-    };
-    this.createRootDirectory = function() {
-      return {
-        ...createFileSystemObject({ type: "directory" }),
-        path: "/",
-        name: "root",
-        data: /* @__PURE__ */ new Map(),
-        isSystemFile: true
-      };
+      eventManager2.dispatch(NAMESPACE, CREATE_DIRECTORY, data);
+      return data;
     };
     this.createSystemDirectory = function(name) {
       return {
-        ...createFileSystemObject({ type: "directory" }),
+        ...new FileSystemObject({ type: "directory" }),
         path: "/" + name + "/",
         name,
         data: /* @__PURE__ */ new Map(),
         isSystemFile: true
       };
+    };
+    this.addListener = (namespace, directory, fn) => {
+      eventManager2.add(`${NAMESPACE}_dir`, `${namespace}_${directory}`, fn);
+    };
+    return this;
+  }
+  var instance7 = new DirectoryManager();
+  var getInstance7 = () => {
+    if (!instance7)
+      instance7 = new DirectoryManager();
+    return instance7;
+  };
+
+  // modules/file-system/index.js
+  var eventManager3 = getInstance2();
+  var directoryManager = getInstance7();
+  eventManager3.set(NAMESPACE);
+  function dispatch(event, data) {
+    eventManager3.dispatch(NAMESPACE, event, data);
+    return data;
+  }
+  function CustomFileSystem() {
+    this.read = (d) => console.info(d);
+    this.isSystemFile = (d) => d.isSystemFile;
+    this.addListener = (k, v) => eventManager3.add(NAMESPACE, k, v);
+    this.createFile = function(options = {}) {
+      return dispatch(CREATE_FILE, new FileSystemObject({
+        type: "file",
+        ...options
+      }));
     };
     this.getParentPath = (path) => {
       const splitted = path.split("/");
@@ -963,212 +1016,50 @@
         splitted.pop();
       return splitted.join("/") + "/";
     };
-    this.isSystemFile = (d) => {
-      return d.isSystemFile;
-    };
-    this.addListener = (k, v) => {
-      this.listener.set(k, v);
-    };
-    this.listenToDirectory = (directory, fn) => {
-      if (!this.directoryListener[directory.id]) {
-        this.directoryListener[directory.id] = [];
-      } else {
-        this.directoryListener[directory.id].push(fn);
-      }
-    };
     this.rename = function(d, newName) {
       d.name = newName;
       return d;
     };
-    this.read = function(d) {
-      console.info(d);
-    };
     this.addToStorage = function(object = {}) {
-      storage.add(object.path, object);
-      this.listener.forEach((v, k) => {
-        v({ event: CustomFileSystem.ADD_TO_STORAGE, data: object });
-      });
+      storage.add(object.path, dispatch(ADD_TO_STORAGE, object));
     };
     this.move = function(toBeMoved, target) {
-      if (target.type !== "directory")
+      if (target.type !== TYPE_DIRECTORY || toBeMoved === target)
         return;
-      if (toBeMoved.type === "file") {
-        target.data.set(toBeMoved.id, toBeMoved);
+      if (toBeMoved.type === TYPE_FILE2) {
+        target.data.set(toBeMoved.id, { ...toBeMoved, path: target.path });
         storage.deletePathData(toBeMoved.path, toBeMoved.id);
       } else {
         storage.bulkModify(toBeMoved.path, target.path);
       }
-      this.listener.forEach((v, k) => {
-        v({ event: CustomFileSystem.MOVE, data: { toBeMoved, target } });
-      });
-    };
-    this.set = function(k, v) {
-      storage.set(k, v);
-    };
-    this.get = function(path) {
-      return storage.get(path);
+      return dispatch(MOVE, { toBeMoved, target });
     };
     this.delete = function(object = {}) {
-      this.listener.forEach((v, k) => {
-        v({ event: CustomFileSystem.DELETE, data: object });
-      });
-      storage.delete(object);
+      storage.delete(dispatch(DELETE, object));
     };
-    const rootDirectory = this.createRootDirectory();
-    storage.add("/", rootDirectory);
+    storage.add("/", {
+      ...new FileSystemObject({ type: "directory" }),
+      path: "/",
+      name: "root",
+      data: /* @__PURE__ */ new Map(),
+      isSystemFile: true
+    });
   }
-  CustomFileSystem.ADD_TO_STORAGE = "addToStorage";
-  CustomFileSystem.CREATE_FILE = "createFile";
-  CustomFileSystem.CREATE_DIRECTORY = "createDirectory";
-  CustomFileSystem.DELETE = "delete";
-  CustomFileSystem.MOVE = "move";
-  var getInstance7 = () => {
-    if (!instance7)
-      instance7 = new CustomFileSystem();
-    return instance7;
+  CustomFileSystem.prototype.get = storage.get.bind(storage);
+  CustomFileSystem.prototype.set = storage.set.bind(storage);
+  CustomFileSystem.prototype.createDirectory = directoryManager.create.bind(directoryManager);
+  CustomFileSystem.prototype.createSystemDirectory = directoryManager.createSystemDirectory.bind(directoryManager);
+  CustomFileSystem.prototype.listenToDirectory = directoryManager.addListener.bind(directoryManager);
+  var instance8 = new CustomFileSystem();
+  var getInstance8 = () => {
+    if (!instance8)
+      instance8 = new CustomFileSystem();
+    return instance8;
   };
-  var MOVE = CustomFileSystem.MOVE;
-  var DELETE = CustomFileSystem.DELETE;
-  var CREATE_FILE = CustomFileSystem.CREATE_FILE;
-  var CREATE_DIRECTORY = CustomFileSystem.CREATE_DIRECTORY;
-  var ADD_TO_STORAGE = CustomFileSystem.ADD_TO_STORAGE;
-
-  // modules/softwares/desktop.js
-  var fs = getInstance7();
-  var ui2 = getInstance5();
-  var NAMESPACE2 = "Desktop";
-  function Desktop(os2) {
-    const self = this;
-    this.name = NAMESPACE2;
-    this.path = "/desktop/";
-    this.iconDomMap = {};
-    const $desktop = document.createElement("div");
-    $desktop.id = "$desktop";
-    $desktop.style.position = "fixed";
-    $desktop.style.left = 0;
-    $desktop.style.top = 0;
-    $desktop.style.width = "100vw";
-    $desktop.style.height = "100vh";
-    $desktop.oncontextmenu = (e) => {
-      e.preventDefault();
-      const $createFile = document.createElement("button");
-      $createFile.innerHTML = "Create file";
-      $createFile.onclick = () => {
-        const file = fs.createFile({
-          name: null,
-          path: this.path
-        });
-        fs.addToStorage(file);
-      };
-      const $closeAllWindow = document.createElement("button");
-      $closeAllWindow.innerHTML = "Close All Window";
-      $closeAllWindow.onclick = function() {
-        ui2.closeAllWindow();
-      };
-      const $contextMenus = [
-        $closeAllWindow,
-        $createFile
-      ];
-      ui2.showContextMenu(e.clientX, e.clientY, $contextMenus);
-    };
-    const desktopDirectory = fs.createSystemDirectory("desktop");
-    fs.addToStorage(desktopDirectory);
-    fs.listenToDirectory(desktopDirectory, (objects) => {
-      $desktop.innerHTML = "";
-      objects.forEach((object) => {
-        renderIcon(object);
-      });
-    });
-    function renderIcon(data) {
-      const $d = document.createElement("div");
-      $d.innerHTML = JSON.stringify(data);
-      $d.style.background = "#222";
-      $d.style.maxWidth = "100px";
-      $d.style.maxHeight = "100px";
-      $d.style.overflow = "auto";
-      const $icon = ui2.createIcon(data.id, $d, data.type);
-      if (data.type === "file") {
-        $icon.ondblclick = () => {
-          os2.run("File Reader", data);
-        };
-        $icon.oncontextmenu = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          ui2.destroyContextMenu();
-          const $contextMenus = [];
-          const $open = document.createElement("button");
-          $open.innerHTML = "Open";
-          $open.onclick = () => {
-            os2.run("File Reader", data);
-          };
-          $contextMenus.push($open);
-          ui2.showContextMenu(e.clientX, e.clientY, $contextMenus);
-        };
-      }
-      self.iconDomMap[data.id] = $icon;
-      $desktop.appendChild($icon);
-    }
-    fs.addListener("desktop.app", (payload) => {
-      if (!payload)
-        return;
-      if (!payload.event || !payload.data)
-        return;
-      if (payload.event === CREATE_FILE) {
-        if (payload.data.path !== this.path)
-          return;
-        renderIcon(payload.data);
-      } else if (payload.event === CREATE_DIRECTORY) {
-        if (!payload.data.path)
-          return;
-        if (payload.data.path.startsWith(this.path) === false)
-          return;
-        if ((payload.data.path.match(/\//g) || []).length !== 3)
-          return;
-        renderIcon(payload.data);
-      } else if (payload.event === DELETE) {
-        if (!payload.data.path)
-          return;
-        if (payload.data.path === this.path || payload.data.path.startsWith(this.path) && (payload.data.path.match(/\//g) || []).length === 3) {
-          this.iconDomMap[payload.data.id].remove();
-        }
-      }
-    });
-    this.start = () => {
-      document.body.appendChild($desktop);
-    };
-  }
-
-  // modules/softwares/settings.js
-  var ui3 = getInstance5();
-  function Settings() {
-    this.name = "Settings";
-    this.getContent = function() {
-      const $content = document.createElement("div");
-      const $darkTheme = document.createElement("button");
-      $darkTheme.onclick = function() {
-        ui3.setTheme("dark");
-      };
-      $darkTheme.innerHTML = "Change to Dark Theme";
-      $content.appendChild($darkTheme);
-      const $lightTheme = document.createElement("button");
-      $lightTheme.onclick = function() {
-        ui3.setTheme("light");
-      };
-      $lightTheme.innerHTML = "Change to Light Theme";
-      $content.appendChild($lightTheme);
-      return $content;
-    };
-    this.start = () => {
-      const customWindow = ui3.createWindow({ name: this.name, resizeable: true, draggable: true });
-      ui3.sendToTop(customWindow);
-      const $content = this.getContent();
-      ui3.setWindowContent(this.name, $content);
-    };
-  }
 
   // modules/softwares/file-manager.js
-  var fs2 = getInstance7();
-  var ui4 = getInstance5();
+  var fs = getInstance8();
+  var ui3 = getInstance5();
   function FileManager(os2) {
     const self = this;
     this.name = "File Manager";
@@ -1179,29 +1070,29 @@
       const $createFileButton = document.createElement("button");
       $createFileButton.innerHTML = "create file";
       $createFileButton.onclick = () => {
-        const file = fs2.createFile({
+        const file = fs.createFile({
           name: null,
           path: this.currentPath
         });
-        fs2.addToStorage(file);
+        fs.addToStorage(file);
         this.reload();
       };
       $head.appendChild($createFileButton);
       const $createDirectory = document.createElement("button");
       $createDirectory.innerHTML = "create directory";
       $createDirectory.onclick = () => {
-        const directory = fs2.createDirectory({
+        const directory = fs.createDirectory({
           name: null,
           path: this.currentPath
         });
-        fs2.addToStorage(directory);
+        fs.addToStorage(directory);
         this.reload();
       };
       $head.appendChild($createDirectory);
       const $back = document.createElement("button");
       $back.innerHTML = "back";
       $back.onclick = () => {
-        this.currentPath = fs2.getParentPath(this.currentPath);
+        this.currentPath = fs.getParentPath(this.currentPath);
         this.reload();
       };
       const $path = document.createElement("p");
@@ -1226,7 +1117,7 @@
     };
     this.reload = () => {
       const $root = this.getRoot();
-      ui4.setWindowContent(this.name, $root);
+      ui3.setWindowContent(this.name, $root);
     };
     this.openDirectory = (directory) => {
       this.currentPath = directory.path;
@@ -1246,7 +1137,7 @@
       return th;
     }
     this.generateTable = () => {
-      const data = fs2.get(this.currentPath);
+      const data = fs.get(this.currentPath);
       const $table = document.createElement("table");
       $table.style.borderCollapse = "collapse";
       $table.style.width = "100%";
@@ -1277,7 +1168,7 @@
         tr.ondrop = () => {
           tr.style.backgroundColor = "initial";
           if (!dragged.path.includes(d.path)) {
-            fs2.move(dragged, d);
+            fs.move(dragged, d);
             this.reload();
           }
         };
@@ -1311,13 +1202,13 @@
             }
           };
           $contextMenus.push($open);
-          if (!fs2.isSystemFile(d)) {
+          if (!fs.isSystemFile(d)) {
             const $rename = document.createElement("button");
             $rename.innerHTML = "Rename";
             const handleSubmit = (e2) => {
-              const newData = fs2.rename(d, e2.target.innerHTML);
+              const newData = fs.rename(d, e2.target.innerHTML);
               tdName.contentEditable = false;
-              fs2.set(d.id, newData);
+              fs.set(d.id, newData);
             };
             $rename.onclick = () => {
               tdName.contentEditable = true;
@@ -1340,12 +1231,12 @@
             const $delete = document.createElement("button");
             $delete.innerHTML = "Delete";
             $delete.onclick = () => {
-              fs2.delete(d);
+              fs.delete(d);
               self.reload();
             };
             $contextMenus.push($delete);
           }
-          ui4.showContextMenu(e.clientX, e.clientY, $contextMenus);
+          ui3.showContextMenu(e.clientX, e.clientY, $contextMenus);
         };
         tr.ondblclick = () => {
           if (d.type === "file") {
@@ -1366,7 +1257,7 @@
       });
       return $table;
     };
-    fs2.addListener("file-manager.app", (payload) => {
+    fs.addListener("file-manager.app", (payload) => {
       if (!payload)
         return;
       if (!payload.event || !payload.data)
@@ -1374,8 +1265,107 @@
       this.reload();
     });
     this.start = () => {
-      ui4.createWindow({ name: this.name, resizeable: true, draggable: true, initialWidth: 300 });
+      ui3.createWindow({ name: this.name, resizeable: true, draggable: true, initialWidth: 300 });
       this.reload();
+    };
+  }
+
+  // modules/softwares/dock/dock.ui.js
+  function DockUI(theme) {
+    const $element = document.createElement("div");
+    $element.style.boxSizing = "border-box";
+    $element.style.position = "fixed";
+    $element.style.zIndex = 9;
+    $element.style.left = 0;
+    $element.style.bottom = 0;
+    $element.style.width = "100%";
+    $element.style.padding = "8px";
+    $element.style.boxSizing = "border-box";
+    $element.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $element.style.backgroundColor = theme.backgroundColor;
+    const $layout = document.createElement("table");
+    const $menuTriggerTd = document.createElement("td");
+    $menuTriggerTd.setAttribute("width", "100%");
+    const $menuTrigger = document.createElement("button");
+    $menuTrigger.innerHTML = "Menu";
+    $menuTriggerTd.appendChild($menuTrigger);
+    $layout.appendChild($menuTriggerTd);
+    const $clockTd = document.createElement("td");
+    const $clock = document.createElement("span");
+    const now = /* @__PURE__ */ new Date();
+    $clock.innerHTML = `${now.getHours()}:${now.getMinutes()}`;
+    $clockTd.appendChild($clock);
+    $layout.appendChild($clockTd);
+    $element.appendChild($layout);
+    const $menu = document.createElement("div");
+    $menu.style.display = "none";
+    $menu.style.position = "absolute";
+    $menu.style.left = 0;
+    $menu.style.width = "200px";
+    $menu.style.height = "200px";
+    $menu.style.padding = "8px";
+    $menu.style.borderRight = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $menu.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $menu.style.backgroundColor = theme.backgroundColor;
+    $element.appendChild($menu);
+    setTimeout(() => {
+      $menu.style.bottom = $element.offsetHeight + "px";
+    }, 200);
+    this.setTheme = function(theme2) {
+      $element.style.backgroundColor = theme2.style.body.backgroundColor;
+      $menu.style.backgroundColor = theme2.style.body.backgroundColor;
+    };
+    this.addToMenu = (element) => {
+      element.style.display = "block";
+      $menu.appendChild(element);
+    };
+    this.clear = () => $menu.innerHTML = "";
+    this.closeMenu = () => $menu.style.display = "none";
+    $menuTrigger.onclick = () => {
+      if ($menu.style.display === "none")
+        $menu.style.display = "block";
+      else if ($menu.style.display === "block")
+        $menu.style.display = "none";
+    };
+    this.getMenuElement = () => $menu;
+    this.getMenuTrigger = () => $menuTrigger;
+    this.render = () => document.body.appendChild($element);
+    this.destroy = () => $element.remove();
+  }
+
+  // modules/softwares/dock/dock.js
+  var ui4 = getInstance5();
+  var hardware4 = getInstance3();
+  var softwareManager = getInstance6();
+  var NAMESPACE2 = "Dock";
+  function Dock() {
+    const self = this;
+    this.name = NAMESPACE2;
+    softwareManager.addEventListener("install", () => {
+      this.refresh();
+    });
+    this.ui = new DockUI(ui4.getTheme());
+    ui4.addThemeListener((theme) => self.ui.setTheme(theme));
+    hardware4.addListener(NAMESPACE2, "mousedown", (e) => {
+      if (e.target !== self.ui.getMenuElement() && e.target !== self.ui.getMenuTrigger() && e.target instanceof HTMLButtonElement === false) {
+        self.ui.closeMenu();
+      }
+    });
+    this.refresh = () => {
+      self.ui.clear();
+      softwareManager.getAllExcepts([NAMESPACE2, "Desktop"]).forEach(function(app) {
+        const $trigger = document.createElement("button");
+        $trigger.innerHTML = app.name;
+        $trigger.onclick = () => app.start();
+        self.ui.addToMenu($trigger);
+      });
+    };
+    this.start = () => {
+      this.ui.render();
+      this.refresh();
+    };
+    this.stop = () => {
+      this.ui.destroy();
     };
   }
 
@@ -1397,7 +1387,7 @@
         $content.style.wordBreak = "break-all";
         $content.style.userSelect = "text";
         $content.oncontextmenu = (e) => e.stopPropagation();
-        $content.innerHTML = JSON.stringify(this.file);
+        $content.innerHTML = `<pre><code>${JSON.stringify(this.file, " ", 2)}</code></pre>`;
         return $content;
       }
     };
@@ -1411,132 +1401,129 @@
     };
   }
 
-  // modules/softwares/window-creator.js
+  // modules/softwares/desktop.js
+  var fs2 = getInstance8();
   var ui6 = getInstance5();
+  var NAMESPACE3 = "Desktop";
+  function Desktop(os2) {
+    const self = this;
+    this.name = NAMESPACE3;
+    this.path = "/desktop/";
+    this.iconDomMap = {};
+    const $desktop = document.createElement("div");
+    $desktop.id = "$desktop";
+    $desktop.style.position = "fixed";
+    $desktop.style.left = 0;
+    $desktop.style.top = 0;
+    $desktop.style.width = "100vw";
+    $desktop.style.height = "100vh";
+    $desktop.oncontextmenu = (e) => {
+      e.preventDefault();
+      const $createFile = document.createElement("button");
+      $createFile.innerHTML = "Create file";
+      $createFile.onclick = () => {
+        const file = fs2.createFile({
+          name: null,
+          path: this.path
+        });
+        fs2.addToStorage(file);
+      };
+      const $closeAllWindow = document.createElement("button");
+      $closeAllWindow.innerHTML = "Close All Window";
+      $closeAllWindow.onclick = function() {
+        ui6.closeAllWindow();
+      };
+      const $contextMenus = [
+        $closeAllWindow,
+        $createFile
+      ];
+      ui6.showContextMenu(e.clientX, e.clientY, $contextMenus);
+    };
+    const desktopDirectory = fs2.createSystemDirectory("desktop");
+    fs2.addToStorage(desktopDirectory);
+    fs2.listenToDirectory(NAMESPACE3, desktopDirectory, (objects) => {
+      $desktop.innerHTML = "";
+      objects.forEach((object) => {
+        renderIcon(object);
+      });
+    });
+    function renderIcon(data) {
+      const $d = document.createElement("div");
+      $d.innerHTML = JSON.stringify(data);
+      $d.style.background = "#222";
+      $d.style.maxWidth = "100px";
+      $d.style.maxHeight = "100px";
+      $d.style.overflow = "auto";
+      const $icon = ui6.createIcon(data.id, $d, data.type);
+      if (data.type === "file") {
+        $icon.ondblclick = () => {
+          os2.run("File Reader", data);
+        };
+        $icon.oncontextmenu = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          ui6.destroyContextMenu();
+          const $contextMenus = [];
+          const $open = document.createElement("button");
+          $open.innerHTML = "Open";
+          $open.onclick = () => {
+            os2.run("File Reader", data);
+          };
+          $contextMenus.push($open);
+          ui6.showContextMenu(e.clientX, e.clientY, $contextMenus);
+        };
+      }
+      self.iconDomMap[data.id] = $icon;
+      $desktop.appendChild($icon);
+    }
+    fs2.addListener("desktop.app", (payload) => {
+      if (!payload)
+        return;
+      if (!payload.event || !payload.data)
+        return;
+      if (payload.event === CREATE_FILE) {
+        if (payload.data.path !== this.path)
+          return;
+        renderIcon(payload.data);
+      } else if (payload.event === CREATE_DIRECTORY) {
+        if (!payload.data.path)
+          return;
+        if (payload.data.path.startsWith(this.path) === false)
+          return;
+        if ((payload.data.path.match(/\//g) || []).length !== 3)
+          return;
+        renderIcon(payload.data);
+      } else if (payload.event === DELETE) {
+        if (!payload.data.path)
+          return;
+        if (payload.data.path === this.path || payload.data.path.startsWith(this.path) && (payload.data.path.match(/\//g) || []).length === 3) {
+          this.iconDomMap[payload.data.id].remove();
+        }
+      }
+    });
+    this.start = () => {
+      document.body.appendChild($desktop);
+    };
+  }
+
+  // modules/softwares/window-creator.js
+  var ui7 = getInstance5();
   function WindowCreator() {
     this.name = "Window Creator";
     this.start = () => {
-      ui6.createWindow({ name: this.name, resizeable: true, draggable: true });
+      ui7.createWindow({ name: this.name, resizeable: true, draggable: true });
       const $create = document.createElement("button");
       $create.innerHTML = "create window";
       $create.onclick = () => {
-        ui6.createWindow({ draggable: true, resizeable: true });
+        ui7.createWindow({ draggable: true, resizeable: true });
       };
-      ui6.setWindowContent(this.name, $create);
-    };
-  }
-
-  // modules/command-line-interface/parse-line-command.js
-  function parseLineCommand(lineCommand) {
-    const characters = lineCommand.split("");
-    const words = [];
-    let word = "";
-    let shouldSkipSpace = true;
-    characters.forEach((character) => {
-      if (shouldSkipSpace && character === " ") {
-        words.push(word);
-        word = "";
-      } else if (shouldSkipSpace && character === '"') {
-        shouldSkipSpace = false;
-      } else if (shouldSkipSpace === false && character === '"') {
-        shouldSkipSpace = true;
-      } else {
-        word += character;
-      }
-    });
-    words.push(word);
-    word = "";
-    return words;
-  }
-  var parse_line_command_default = parseLineCommand;
-
-  // modules/command-line-interface/index.js
-  function CommandLineInterface() {
-    this.debug = false;
-    this.functionMap = {};
-    this.register = function(key, value) {
-      this.functionMap[key] = value;
-    };
-    this.execute = function(...args) {
-      if (args.length === 2) {
-        this.executeByKey(args[0], args[1]);
-      } else {
-        this.executeLineCommand(args[0]);
-      }
-    };
-    this.executeByKey = function(key, payload) {
-      if (this.debug)
-        console.log(`[${performance.now().toFixed(2)}] executing: ${key}`);
-      if (!this.functionMap[key])
-        throw Error("Unknown function: " + key);
-      return this.functionMap[key](payload);
-    };
-    this.executeLineCommand = function(lineCommand) {
-      const args = parse_line_command_default(lineCommand);
-      const functionKey = args[0];
-      if (!this.functionMap[functionKey])
-        throw Error("Invalid line command: " + functionKey);
-      this.executeByKey(functionKey, args[1]);
-    };
-    this.executeLater = function(key, delay) {
-      const self = this;
-      setTimeout(() => {
-        self.execute(key);
-      }, delay);
-    };
-    return this;
-  }
-  var instance8 = new CommandLineInterface();
-  var getInstance8 = () => {
-    if (!instance8)
-      instance8 = new CommandLineInterface();
-    return instance8;
-  };
-
-  // modules/softwares/terminal.js
-  var ui7 = getInstance5();
-  var cli = getInstance8();
-  function Terminal() {
-    this.name = "Terminal";
-    const logs = [];
-    const $logs = document.createElement("div");
-    cli.register("echo", (payload) => {
-      logs.push(payload);
-      renderLogs();
-    });
-    function renderLogs() {
-      $logs.innerHTML = "";
-      for (let index = logs.length - 1; index >= 0; index--) {
-        const log = logs[index];
-        $logs.innerHTML += `${log}<br>`;
-      }
-    }
-    this.getContent = function() {
-      const $content = document.createElement("div");
-      const input = document.createElement("input");
-      input.placeholder = 'echo "hello world"';
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          console.log(input.value);
-          cli.execute(input.value);
-          input.value = "";
-        }
-      });
-      $content.append(input);
-      $content.append($logs);
-      return $content;
-    };
-    this.start = () => {
-      const customWindow = ui7.createWindow({ name: this.name, resizeable: true, draggable: true });
-      ui7.sendToTop(customWindow);
-      const $content = this.getContent();
-      ui7.setWindowContent(this.name, $content);
+      ui7.setWindowContent(this.name, $create);
     };
   }
 
   // modules/operating-system.js
   var ui8 = getInstance5();
-  var softwareManager2 = getInstance3();
+  var softwareManager2 = getInstance6();
   function OperatingSystem() {
     this.boot = () => {
       ui8.init();
@@ -1547,15 +1534,13 @@
       this.install(new WindowCreator());
       this.install(new FileManager(instance9));
       this.install(new Terminal());
-      this.get(NAMESPACE).start();
-      this.get(NAMESPACE2).start();
-    };
-    this.run = function(appKey, payload) {
-      this.run(appKey, payload);
+      this.run(NAMESPACE2);
+      this.run(NAMESPACE3);
     };
   }
   OperatingSystem.prototype.get = softwareManager2.get.bind(softwareManager2);
   OperatingSystem.prototype.install = softwareManager2.install.bind(softwareManager2);
+  OperatingSystem.prototype.run = softwareManager2.run.bind(softwareManager2);
   var instance9 = new OperatingSystem();
   var getInstance9 = () => {
     if (!instance9)

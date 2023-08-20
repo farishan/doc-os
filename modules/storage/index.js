@@ -1,11 +1,9 @@
-let instance
-
 function Storage() {
-  let size = 0
   const data = new Map()
+  let size = 0
 
   this.add = function (k, v) {
-    if (!k || !v) throw Error('Invalid arguments.')
+    if (!k || !v) throw Error('Invalid arguments.', { k, v })
 
     if (v.size) size += v.size
 
@@ -14,19 +12,15 @@ function Storage() {
     } else {
       const pathObject = data.get(k)
 
-      if (pathObject.data/** k is a directory with data prop */) {
-        if (pathObject.size && v.size) pathObject.size += v.size
-        pathObject.data.set(v.id, v)
-      }
+      if (!pathObject.data) return
+
+      /** pathObject is a directory with data prop */
+      if (pathObject.size && v.size) pathObject.size += v.size
+      pathObject.data.set(v.id, v)
     }
   }
 
-  this.get = function (path) {
-    if (!path) throw Error('Invalid path.', path)
-
-    let result = new Map()
-
-    /* Get directories */
+  this.getDirectories = (path, result) => {
     data.forEach((v, k) => {
       if (path === '/') {
         /* is root.
@@ -41,42 +35,38 @@ function Storage() {
         }
       }
     })
+  }
 
-    /* Get files */
+  this.getFiles = (path, result) => {
     const pathObject = data.get(path)
-    if (pathObject) {
-      if (pathObject.data) {
-        pathObject.data.forEach(d => result.set(d.id, d))
-      }
-    }
+    if (!pathObject) return
+    if (!pathObject.data) return
+    pathObject.data.forEach(d => result.set(d.id, d))
+  }
+
+  this.get = function (path) {
+    if (!path) throw Error('Invalid path.', path)
+
+    let result = new Map()
+    this.getDirectories(path, result)
+    this.getFiles(path, result)
 
     return result
   }
 
-  this.deletePathData = (path, key) => {
-    return data.get(path).data.delete(key)
-  }
-
-  this.getSize = function () {
-    return size
-  }
-
-  this.set = function (k, v) {
-    data.set(k, v)
-  }
+  this.deletePathData = (path, key) => data.get(path).data.delete(key)
+  this.getSize = () => size
+  this.set = (k, v) => data.set(k, v)
+  this.deleteByPath = (path) => data.delete(path)
 
   this.bulkModify = function (parameter, modifier) {
     data.forEach((v, k) => {
-      if (k.startsWith(parameter)) {
-        v.path = modifier + k.substring(1)
-        data.set(v.path, v)
-        data.delete(k)
-      }
-    })
-  }
+      if (!k.startsWith(parameter)) return
 
-  this.deleteByPath = function (path) {
-    data.delete(path)
+      v.path = modifier + k.substring(1)
+      data.set(v.path, v)
+      data.delete(k)
+    })
   }
 
   this.delete = function (object) {
@@ -89,14 +79,8 @@ function Storage() {
     }
   }
 
-  this.log = () => {
-    console.info(data)
-  }
+  this.log = () => console.info(data)
 }
 
-const getInstance = () => {
-  if (!instance) instance = new Storage()
-  return instance
-}
-
-export { Storage, getInstance }
+const storage = new Storage()
+export { Storage, storage }

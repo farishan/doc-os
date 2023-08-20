@@ -19,7 +19,7 @@ function CustomFileReader() {
       $content.style.wordBreak = 'break-all'
       $content.style.userSelect = 'text'
       $content.oncontextmenu = e => e.stopPropagation()
-      $content.innerHTML = JSON.stringify(this.file)
+      $content.innerHTML = `<pre><code>${JSON.stringify(this.file, ' ', 2)}</code></pre>`
       return $content
     }
   }

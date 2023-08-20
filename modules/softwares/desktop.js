@@ -54,7 +54,7 @@ function Desktop(os) {
   const desktopDirectory = fs.createSystemDirectory('desktop')
   fs.addToStorage(desktopDirectory)
 
-  fs.listenToDirectory(desktopDirectory, (objects) => {
+  fs.listenToDirectory(NAMESPACE, desktopDirectory, (objects) => {
     $desktop.innerHTML = ''
     objects.forEach(object => {
       renderIcon(object)

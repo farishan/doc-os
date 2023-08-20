@@ -1,14 +1,14 @@
 'use strict';
 
-import { NAMESPACE as NAMESPACE_DOCK, Dock } from "./softwares/dock/dock";
-import { NAMESPACE as NAMESPACE_DESKTOP, Desktop } from "./softwares/desktop";
+import { Terminal } from "./softwares/terminal";
 import { Settings as SettingsApp } from "./softwares/settings";
 import { getInstance as getGUI } from "./graphical-user-interface";
 import { getInstance as getSoftwareManager } from "./software-manager";
 import { FileManager as FileManagerApp } from "./softwares/file-manager";
+import { NAMESPACE as NAMESPACE_DOCK, Dock } from "./softwares/dock/dock";
 import { CustomFileReader as FileReaderApp } from "./softwares/file-reader";
+import { NAMESPACE as NAMESPACE_DESKTOP, Desktop } from "./softwares/desktop";
 import { WindowCreator as WindowCreatorApp } from "./softwares/window-creator";
-import { Terminal } from "./softwares/terminal";
 
 const ui = getGUI()
 const softwareManager = getSoftwareManager()
@@ -27,18 +27,15 @@ function OperatingSystem() {
     this.install(new Terminal())
 
     /* Run default softwares */
-    this.get(NAMESPACE_DOCK).start()
-    this.get(NAMESPACE_DESKTOP).start()
-  }
-
-  this.run = function (appKey, payload) {
-    this.run(appKey, payload)
+    this.run(NAMESPACE_DOCK)
+    this.run(NAMESPACE_DESKTOP)
   }
 }
 
 /* facades */
 OperatingSystem.prototype.get = softwareManager.get.bind(softwareManager)
 OperatingSystem.prototype.install = softwareManager.install.bind(softwareManager)
+OperatingSystem.prototype.run = softwareManager.run.bind(softwareManager)
 
 let instance = new OperatingSystem()
 const getInstance = () => {
