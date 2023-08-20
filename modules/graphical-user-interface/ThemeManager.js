@@ -3,7 +3,7 @@ import { themeMap } from "./theme"
 const HEAD = document.head
 const BODY = document.body
 
-function ThemeManager(gui) {
+function ThemeManager() {
   let theme = null
   this.themeListeners = []
 
@@ -67,4 +67,10 @@ function toKebabCase(str) {
   return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-export { ThemeManager }
+let instance = new ThemeManager()
+const getInstance = () => {
+  if (!instance) instance = new ThemeManager()
+  return instance
+}
+
+export { ThemeManager, getInstance }

@@ -1,7 +1,5 @@
 'use strict'
 
-const DEBUG = true
-
 /**
  * @type SoftwareManager
  */

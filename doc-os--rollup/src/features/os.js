@@ -68,7 +68,7 @@ function OperatingSystem() {
     return this
 }
 
-/* Facade/proxy? */
+/* facades */
 OperatingSystem.prototype.execute = functionManager.execute.bind(functionManager)
 OperatingSystem.prototype.executeLater = functionManager.executeLater.bind(functionManager)
 

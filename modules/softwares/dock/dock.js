@@ -1,17 +1,21 @@
 'use strict'
 
 import { DockUI } from './dock.ui'
-import { hardware } from '../../hardware'
-import * as SoftwareManager from '../../software-manager'
-import * as UI from '../../graphical-user-interface'
+import { getInstance as getHardware } from '../../hardware'
+import { getInstance as getSoftwareManager } from '../../software-manager'
+import { getInstance as getGUI } from '../../graphical-user-interface'
 
-const ui = UI.getInstance()
+const ui = getGUI()
+const hardware = getHardware()
+const softwareManager = getSoftwareManager()
+
+const NAMESPACE = 'Dock'
 
 function Dock() {
   const self = this
-  this.name = 'Dock'
 
-  const softwareManager = SoftwareManager.getInstance()
+  /* this.name is required */
+  this.name = NAMESPACE
 
   softwareManager.addEventListener('install', () => {
     this.refresh()
@@ -20,7 +24,7 @@ function Dock() {
   this.ui = new DockUI(ui.getTheme())
   ui.addThemeListener(theme => self.ui.setTheme(theme))
 
-  hardware.addListener('Dock', 'mousedown', e => {
+  hardware.addListener(NAMESPACE, 'mousedown', e => {
     if (
       e.target !== self.ui.getMenuElement()
       && e.target !== self.ui.getMenuTrigger()
@@ -32,7 +36,8 @@ function Dock() {
 
   this.refresh = () => {
     self.ui.clear()
-    softwareManager.getAllExcepts(['Dock', 'Desktop']).forEach(function (app) {
+    /* @todo add desktop namespace */
+    softwareManager.getAllExcepts([NAMESPACE, 'Desktop']).forEach(function (app) {
       const $trigger = document.createElement('button')
       $trigger.innerHTML = app.name
       $trigger.onclick = () => app.start()
@@ -50,4 +55,4 @@ function Dock() {
   }
 }
 
-export { Dock }
+export { NAMESPACE, Dock }

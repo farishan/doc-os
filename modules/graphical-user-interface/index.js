@@ -3,54 +3,45 @@
  * - theme switching
  * - custom context menu
  * - customWindow management
- * - event management
  * - icon management?
  */
 
 'use strict';
 
-import { ContextMenuManager } from "./ContextMenuManager";
-import { EventManager } from "./EventManager";
 import { IconManager } from "./IconManager";
-import { ThemeManager } from "./ThemeManager";
 import { WindowManager } from "./WindowManager";
+import { ContextMenuManager } from "./ContextMenuManager";
+import { getInstance as getThemeManager } from "./ThemeManager";
 
-let instance;
+const iconManager = new IconManager()
+const themeManager = getThemeManager()
+const windowManager = new WindowManager()
+const contextMenuManager = new ContextMenuManager()
 
 function GraphicalUserInterface() {
-  const self = this
-
-  const eventManager = new EventManager(self)
-  const themeManager = new ThemeManager(self)
-  const windowManager = new WindowManager(eventManager, themeManager)
-  const contextMenuManager = new ContextMenuManager(themeManager)
-  const iconManager = new IconManager(eventManager)
-
-  this.themeListeners = []
-
-  this.setWindowContent = (...args) => windowManager.setWindowContent(...args)
-  this.sendToTop = (...args) => windowManager.sendToTop(...args)
-  this.createWindow = (...args) => windowManager.createWindow(...args)
-  this.createIcon = (id, dom) => iconManager.createIcon(id, dom)
-  this.getTheme = () => themeManager.getTheme()
-  this.showContextMenu = (...args) => contextMenuManager.showContextMenu(...args)
-  this.setTheme = (newTheme) => themeManager.setTheme(newTheme, (theme) => {
-    /* Side effects */
-    windowManager.notify(theme)
-  })
-  this.addThemeListener = (cb) => themeManager.addListener(cb)
-  this.closeAllWindow = () => windowManager.closeAllWindow()
-
   this.init = () => {
     this.setTheme('dark')
-
-    eventManager.init()
-    contextMenuManager.initEventListeners()
+    contextMenuManager.init()
   }
 
   return this
 }
 
+/* facades */
+GraphicalUserInterface.prototype.getTheme = themeManager.getTheme.bind(themeManager)
+GraphicalUserInterface.prototype.createIcon = iconManager.createIcon.bind(iconManager)
+GraphicalUserInterface.prototype.sendToTop = windowManager.sendToTop.bind(windowManager)
+GraphicalUserInterface.prototype.createWindow = windowManager.createWindow.bind(windowManager)
+GraphicalUserInterface.prototype.addThemeListener = themeManager.addListener.bind(themeManager)
+GraphicalUserInterface.prototype.closeAllWindow = windowManager.closeAllWindow.bind(windowManager)
+GraphicalUserInterface.prototype.setWindowContent = windowManager.setWindowContent.bind(windowManager)
+GraphicalUserInterface.prototype.showContextMenu = contextMenuManager.showContextMenu.bind(contextMenuManager)
+GraphicalUserInterface.prototype.setTheme = (newTheme) => themeManager.setTheme(newTheme, (theme) => {
+  /* Side effects */
+  windowManager.notify(theme)
+})
+
+let instance = new GraphicalUserInterface()
 const getInstance = () => {
   if (!instance) instance = new GraphicalUserInterface()
   return instance

@@ -1,8 +1,17 @@
 import { CustomWindow } from "./CustomWindow"
+import { getInstance as getHardware } from "../hardware"
+import { getInstance as getThemeManager } from "./ThemeManager"
+
+const hardware = getHardware()
+const themeManager = getThemeManager()
 
 const BODY = document.body
+const eventScopesByKey = {
+  mousemove: 'mousemove',
+  mouseup: 'mouseup'
+}
 
-function WindowManager(eventManager, themeManager) {
+function WindowManager() {
   const self = this
   const windowByName = {}
 
@@ -122,10 +131,9 @@ function WindowManager(eventManager, themeManager) {
     $window.onmousedown = prepareForInteraction
     if (resizeable) $window.onmousemove = getProperCursor
 
-    /* add custom window's listener to UI manager window event listeners */
-
-    eventManager.addListener(customWindow.id, 'mousemove', dragAndResize)
-    eventManager.addListener(customWindow.id, 'mouseup', () => {
+    /* [side-effects] add custom window's listener to UI manager window event listeners */
+    hardware.addListener(customWindow.id, eventScopesByKey.mousemove, dragAndResize)
+    hardware.addListener(customWindow.id, eventScopesByKey.mouseup, () => {
       isMouseDown = false
       isResizing = false
       isDragging = false
@@ -155,9 +163,6 @@ function WindowManager(eventManager, themeManager) {
 
     windowByName[customWindow.name] = customWindow
 
-    /* [side-effects] Init listener for window */
-    eventManager.setListener(customWindow.id)
-
     if (options.draggable || options.resizeable) {
       initWindowInteraction(customWindow, options)
     }
@@ -177,7 +182,10 @@ function WindowManager(eventManager, themeManager) {
     const customWindow = windowByName[name]
 
     /* side-effects */
-    eventManager.removeListener(customWindow.id)
+    for (let index = 0; index < Object.keys(eventScopesByKey).length; index++) {
+      const scopeKey = Object.keys(eventScopesByKey)[index];
+      hardware.removeListener(`customWindow_${customWindow.id}`, scopeKey)
+    }
 
     delete windowByName[name]
   }

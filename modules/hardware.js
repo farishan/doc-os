@@ -1,17 +1,22 @@
+/* The hardware manager doesn't need an event manager,
+but one is necessary to monitor hardware events across modules. */
+import { getInstance as getEventManager } from "./event-manager"
+
+const eventManager = getEventManager()
+
 function Hardware() {
-  this.listener = {
-    mousedown: {},
-    mousemove: {},
-    mouseup: {},
-    mouseenter: {},
-    mouseleave: {},
-    contextmenu: {},
-
-    keydown: {},
-    keyup: {},
-
-    resize: {}
-  }
+  /* window events */
+  eventManager.set('resize')
+  /* keyboard events */
+  eventManager.set('keyup')
+  eventManager.set('keydown')
+  /* mouse events */
+  eventManager.set('mouseup')
+  eventManager.set('mousedown')
+  eventManager.set('mousemove')
+  eventManager.set('mouseenter')
+  eventManager.set('mouseleave')
+  eventManager.set('contextmenu')
 }
 
 /**
@@ -21,9 +26,9 @@ function Hardware() {
 */
 Hardware.prototype.addListener = function (id, event, cb) {
   if (!event || !id || !cb) throw Error('Invalid arguments.', { event, id, cb })
-  if (!this.listener[event]) throw Error('Unknown event.', event)
+  if (!eventManager.isset(event)) throw Error('Unknown event.', event)
 
-  this.listener[event][id] = cb
+  eventManager.add(event, id, cb)
   window.addEventListener(event, cb)
 }
 
@@ -33,16 +38,21 @@ Hardware.prototype.addListener = function (id, event, cb) {
 */
 Hardware.prototype.removeListener = function (id, event) {
   if (!event || !id) throw Error('Invalid arguments.', { event, id })
-  if (!this.listener[event]) throw Error('Unknown event.', event)
-  if (!this.listener[event][id]) throw Error(`No ${event} listener with this id: ${id}`)
+  if (!eventManager.isset(event)) throw Error('Unknown event.', event)
+  if (!eventManager.has(event, id)) throw Error(`No ${event} listener with this id: ${id}`)
 
-  window.removeEventListener(event, this.listener[event][id])
-  delete this.listener[event][id]
+  /* remove attached event from window first */
+  window.removeEventListener(event, eventManager.get(event, id))
+  eventManager.remove(event, id)
 }
 
-const hardware = new Hardware()
+let instance = new Hardware()
+const getInstance = () => {
+  if (!instance) instance = new Hardware()
+  return instance
+}
 
-export { Hardware, hardware }
+export { Hardware, getInstance }
 
 /* @todo add test */
 // const hm = new Hardware()

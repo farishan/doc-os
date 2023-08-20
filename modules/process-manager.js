@@ -1,4 +1,9 @@
 /* WIP */
+/**
+ * @method `add`
+ * @method `run`
+ * @method `log`
+ */
 function ProcessManager() {
   let processMap = {}
 

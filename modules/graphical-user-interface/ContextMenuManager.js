@@ -1,9 +1,12 @@
-import { hardware } from "../hardware";
+import { getInstance as getHardware } from "../hardware";
+import { getInstance as getThemeManager } from "./ThemeManager";
+
+const hardware = getHardware()
+const themeManager = getThemeManager()
 
 const BODY = document.body
 
-function ContextMenuManager(themeManager) {
-  const self = this
+function ContextMenuManager() {
   this.$contextMenu = undefined;
   this.$contextMenus = [];
   this.getContextMenu = () => { }
@@ -61,7 +64,7 @@ function ContextMenuManager(themeManager) {
     this.$contextMenus.push(dom)
   }
 
-  this.initEventListeners = function () {
+  this.init = function () {
     hardware.addListener('UI', 'contextmenu', e => {
       e.preventDefault()
 

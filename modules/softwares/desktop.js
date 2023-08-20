@@ -4,9 +4,13 @@ import { getInstance as getFS, CREATE_FILE, CREATE_DIRECTORY, MOVE, DELETE } fro
 const fs = getFS()
 const ui = getGUI()
 
+const NAMESPACE = 'Desktop'
+
 function Desktop(os) {
   const self = this
-  this.name = 'Desktop'
+
+  /* this.name is required */
+  this.name = NAMESPACE
 
   this.path = '/desktop/'
 
@@ -65,9 +69,10 @@ function Desktop(os) {
     $d.style.maxHeight = '100px'
     $d.style.overflow = 'auto'
 
-    const $icon = ui.createIcon(data.id, $d)
+    const $icon = ui.createIcon(data.id, $d, data.type)
     if (data.type === 'file') {
       $icon.ondblclick = () => {
+        /* @todo handle other app */
         os.run('File Reader', data)
       }
 
@@ -82,6 +87,7 @@ function Desktop(os) {
         const $open = document.createElement('button')
         $open.innerHTML = 'Open'
         $open.onclick = () => {
+          /* @todo handle run another software */
           os.run('File Reader', data)
         }
         $contextMenus.push($open)
@@ -160,4 +166,4 @@ function Desktop(os) {
   }
 }
 
-export { Desktop }
+export { NAMESPACE, Desktop }

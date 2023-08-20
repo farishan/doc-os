@@ -1,268 +1,257 @@
 (() => {
-  // modules/hardware.js
-  function Hardware() {
-    this.listener = {
-      mousedown: {},
-      mousemove: {},
-      mouseup: {},
-      mouseenter: {},
-      mouseleave: {},
-      contextmenu: {},
-      keydown: {},
-      keyup: {},
-      resize: {}
+  // modules/softwares/dock/dock.ui.js
+  function DockUI(theme) {
+    const $element = document.createElement("div");
+    $element.style.boxSizing = "border-box";
+    $element.style.position = "fixed";
+    $element.style.zIndex = 9;
+    $element.style.left = 0;
+    $element.style.bottom = 0;
+    $element.style.width = "100%";
+    $element.style.padding = "8px";
+    $element.style.boxSizing = "border-box";
+    $element.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $element.style.backgroundColor = theme.backgroundColor;
+    const $layout = document.createElement("table");
+    const $menuTriggerTd = document.createElement("td");
+    $menuTriggerTd.setAttribute("width", "100%");
+    const $menuTrigger = document.createElement("button");
+    $menuTrigger.innerHTML = "Menu";
+    $menuTriggerTd.appendChild($menuTrigger);
+    $layout.appendChild($menuTriggerTd);
+    const $clockTd = document.createElement("td");
+    const $clock = document.createElement("span");
+    const now = /* @__PURE__ */ new Date();
+    $clock.innerHTML = `${now.getHours()}:${now.getMinutes()}`;
+    $clockTd.appendChild($clock);
+    $layout.appendChild($clockTd);
+    $element.appendChild($layout);
+    const $menu = document.createElement("div");
+    $menu.style.display = "none";
+    $menu.style.position = "absolute";
+    $menu.style.left = 0;
+    $menu.style.width = "200px";
+    $menu.style.height = "200px";
+    $menu.style.padding = "8px";
+    $menu.style.borderRight = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $menu.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
+    $menu.style.backgroundColor = theme.backgroundColor;
+    $element.appendChild($menu);
+    setTimeout(() => {
+      $menu.style.bottom = $element.offsetHeight + "px";
+    }, 200);
+    this.setTheme = function(theme2) {
+      $element.style.backgroundColor = theme2.style.body.backgroundColor;
+      $menu.style.backgroundColor = theme2.style.body.backgroundColor;
     };
+    this.addToMenu = (element) => {
+      element.style.display = "block";
+      $menu.appendChild(element);
+    };
+    this.clear = () => $menu.innerHTML = "";
+    this.closeMenu = () => $menu.style.display = "none";
+    $menuTrigger.onclick = () => {
+      if ($menu.style.display === "none")
+        $menu.style.display = "block";
+      else if ($menu.style.display === "block")
+        $menu.style.display = "none";
+    };
+    this.getMenuElement = () => $menu;
+    this.getMenuTrigger = () => $menuTrigger;
+    this.render = () => document.body.appendChild($element);
+    this.destroy = () => $element.remove();
+  }
+
+  // modules/event-manager.js
+  function EventManager() {
+    const eventsByKey = {
+      // 'event_key': () => {}
+    };
+    const eventsByScope = {
+      // 'scope': {
+      //   'event_key': () => {}
+      // }
+    };
+    this.on = (key, fn) => eventsByKey[key] = fn;
+    this.off = (key) => delete eventsByKey[key];
+    this.get = (scope, key) => {
+      if (!eventsByScope[scope])
+        this.set(scope);
+      return key ? eventsByScope[scope][key] : eventsByScope[scope];
+    };
+    this.set = (scope) => eventsByScope[scope] = {};
+    this.isset = (scope) => eventsByScope[scope] ? true : false;
+    this.add = (scope, key, fn) => {
+      if (!eventsByScope[scope])
+        this.set(scope);
+      eventsByScope[scope][key] = fn;
+    };
+    this.remove = (scope, key) => {
+      if (!eventsByScope[scope])
+        this.set(scope);
+      if (key)
+        delete eventsByScope[scope][key];
+      else
+        delete eventsByScope[scope];
+    };
+    this.has = (scope, key) => eventsByScope[scope] && eventsByScope[scope][key] ? true : false;
+    return this;
+  }
+  var instance = new EventManager();
+  var getInstance = () => {
+    if (!instance)
+      instance = new EventManager();
+    return instance;
+  };
+
+  // modules/hardware.js
+  var eventManager = getInstance();
+  function Hardware() {
+    eventManager.set("resize");
+    eventManager.set("keyup");
+    eventManager.set("keydown");
+    eventManager.set("mouseup");
+    eventManager.set("mousedown");
+    eventManager.set("mousemove");
+    eventManager.set("mouseenter");
+    eventManager.set("mouseleave");
+    eventManager.set("contextmenu");
   }
   Hardware.prototype.addListener = function(id, event, cb) {
     if (!event || !id || !cb)
       throw Error("Invalid arguments.", { event, id, cb });
-    if (!this.listener[event])
+    if (!eventManager.isset(event))
       throw Error("Unknown event.", event);
-    this.listener[event][id] = cb;
+    eventManager.add(event, id, cb);
     window.addEventListener(event, cb);
   };
   Hardware.prototype.removeListener = function(id, event) {
     if (!event || !id)
       throw Error("Invalid arguments.", { event, id });
+    if (!eventManager.isset(event))
+      throw Error("Unknown event.", event);
+    if (!eventManager.has(event, id))
+      throw Error(`No ${event} listener with this id: ${id}`);
+    window.removeEventListener(event, eventManager.get(event, id));
+    eventManager.remove(event, id);
+  };
+  var instance2 = new Hardware();
+  var getInstance2 = () => {
+    if (!instance2)
+      instance2 = new Hardware();
+    return instance2;
+  };
+
+  // modules/software-manager.js
+  var instance3;
+  function SoftwareManager() {
+    this.accessKey = "software";
+    this.software = /* @__PURE__ */ new Map();
+    this.listener = {
+      install: []
+    };
+  }
+  SoftwareManager.prototype.install = function(software) {
+    if (!software)
+      throw Error("Undefined software.");
+    if (!software.name)
+      throw Error("Software name is required.");
+    if (!software.start)
+      throw Error("Software start function is required.");
+    this.software.set(software.name, software);
+    this.listener.install.forEach((fn) => fn());
+  };
+  SoftwareManager.prototype.getAllExcepts = function(filter) {
+    let softwares = [];
+    for (const [key, value] of this.software) {
+      if (!filter.includes(key))
+        softwares.push(value);
+    }
+    return softwares;
+  };
+  SoftwareManager.prototype.getAllExcept = function(name) {
+    let softwares = [];
+    for (const [key, value] of this.software) {
+      if (key !== name)
+        softwares.push(value);
+    }
+    return softwares;
+  };
+  SoftwareManager.prototype.get = function(name) {
+    if (!name || !this.software.get(name))
+      throw Error("Unknown software.");
+    return this.software.get(name);
+  };
+  SoftwareManager.prototype.run = function(key, payload) {
+    const s = this.software.get(key);
+    if (!s)
+      throw Error("unknown software:", key);
+    s.start(payload);
+  };
+  SoftwareManager.prototype.addEventListener = function(event, cb) {
     if (!this.listener[event])
       throw Error("Unknown event.", event);
-    if (!this.listener[event][id])
-      throw Error(`No ${event} listener with this id: ${id}`);
-    window.removeEventListener(event, this.listener[event][id]);
-    delete this.listener[event][id];
+    this.listener[event].push(cb);
   };
-  var hardware = new Hardware();
-
-  // modules/graphical-user-interface/ContextMenuManager.js
-  var BODY = document.body;
-  function ContextMenuManager(themeManager) {
-    const self = this;
-    this.$contextMenu = void 0;
-    this.$contextMenus = [];
-    this.getContextMenu = () => {
-    };
-    this.showContextMenu = function(x, y, content) {
-      const $menu = document.createElement("div");
-      $menu.style.border = "1px solid";
-      $menu.style.padding = "8px";
-      $menu.style.position = "absolute";
-      $menu.style.zIndex = 9;
-      $menu.style.left = x + "px";
-      $menu.style.top = y + "px";
-      try {
-        $menu.style.backgroundColor = themeManager.getTheme().style.body.backgroundColor;
-      } catch (error) {
-        console.error(error);
-      }
-      $menu.onclick = () => this.destroyContextMenu();
-      $menu.oncontextmenu = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      };
-      if (content) {
-        content.forEach((element) => {
-          element.style.display = "block";
-          $menu.appendChild(element);
-        });
-      } else {
-        this.$contextMenus.forEach((element) => {
-          $menu.appendChild(element);
-        });
-      }
-      this.$contextMenu = $menu;
-      BODY.appendChild(this.$contextMenu);
-    };
-    this.moveContextMenu = function(x, y) {
-      this.$contextMenu.style.left = x + "px";
-      this.$contextMenu.style.top = y + "px";
-    };
-    this.destroyContextMenu = function() {
-      if (!this.$contextMenu)
-        return;
-      this.$contextMenu.remove();
-      this.$contextMenu = void 0;
-    };
-    this.addToContextMenu = function(dom) {
-      dom.style.display = "block";
-      this.$contextMenus.push(dom);
-    };
-    this.initEventListeners = function() {
-      hardware.addListener("UI", "contextmenu", (e) => {
-        e.preventDefault();
-        this.getContextMenu(e.target);
-        if (this.$contextMenu) {
-          this.moveContextMenu(e.clientX, e.clientY);
-          return;
-        }
-        this.showContextMenu(e.clientX, e.clientY);
-      });
-      hardware.addListener("UI", "mousedown", (e) => {
-        if (!this.$contextMenu || e.target === this.$contextMenu)
-          return;
-        if (this.$contextMenu.contains(e.target))
-          return;
-        this.destroyContextMenu();
-      });
-    };
-  }
-
-  // modules/graphical-user-interface/EventManager.js
-  function EventManager() {
-    const listener = {};
-    this.setListener = (id) => {
-      listener[id] = {};
-    };
-    this.addListener = function(id, key, fn) {
-      listener[id][key] = fn;
-    };
-    this.removeListener = function(id) {
-      delete listener[id];
-    };
-    this.init = () => {
-      hardware.addListener("UI", "mousemove", (e) => {
-        for (let [, v] of Object.entries(listener)) {
-          if (v["mousemove"])
-            v["mousemove"](e);
-        }
-      });
-      hardware.addListener("UI", "mouseup", (e) => {
-        for (let [, v] of Object.entries(listener)) {
-          if (v["mouseup"])
-            v["mouseup"](e);
-        }
-      });
-    };
-  }
+  var getInstance3 = () => {
+    if (!instance3)
+      instance3 = new SoftwareManager();
+    return instance3;
+  };
 
   // modules/graphical-user-interface/IconManager.js
-  function IconManager(eventManager) {
-    this.createIcon = function(id, dom) {
-      eventManager.setListener(id);
+  var TYPE_FILE = "file";
+  var TYPE_FOLDER = "folder";
+  var TYPE_APP = "app";
+  var hardware = getInstance2();
+  var eventScopesByKey = {
+    mousemove: "mousemove",
+    mouseup: "mouseup"
+  };
+  function IconManager() {
+    this.createIcon = function(id, dom, type) {
       let isMouseDown = false;
       let isDragging = false;
       let startPoint = { x: 0, y: 0 };
       let distance = { x: 0, y: 0 };
-      const $icon = document.createElement("div");
-      $icon.appendChild(dom);
-      $icon.style.border = "1px solid";
-      $icon.style.position = "absolute";
-      $icon.style.left = 0;
-      $icon.style.top = 0;
-      $icon.style.cursor = "grab";
-      $icon.style.userSelect = "none";
-      $icon.onmousedown = (ev) => {
+      const rootDOM = document.createElement("div");
+      const iconDOM = document.createElement("span");
+      if (type === TYPE_FILE)
+        iconDOM.innerHTML = "&#128196;";
+      else if (type === TYPE_FOLDER)
+        iconDOM.innerHTML = "&#128193;";
+      else if (type === TYPE_APP)
+        iconDOM.innerHTML = "&#9670;";
+      rootDOM.append(iconDOM);
+      rootDOM.appendChild(dom);
+      rootDOM.style.top = 0;
+      rootDOM.style.left = 0;
+      rootDOM.style.cursor = "grab";
+      rootDOM.style.userSelect = "none";
+      rootDOM.style.border = "1px solid";
+      rootDOM.style.position = "absolute";
+      rootDOM.onmousedown = (ev) => {
         isMouseDown = true;
         startPoint.x = ev.clientX;
         startPoint.y = ev.clientY;
-        distance.x = Math.abs(startPoint.x - $icon.offsetLeft);
-        distance.y = Math.abs(startPoint.y - $icon.offsetTop);
-        $icon.style.cursor = "grabbing";
+        distance.x = Math.abs(startPoint.x - rootDOM.offsetLeft);
+        distance.y = Math.abs(startPoint.y - rootDOM.offsetTop);
+        rootDOM.style.cursor = "grabbing";
       };
-      eventManager.addListener(id, "mousemove", (ev) => {
+      hardware.addListener(id, eventScopesByKey.mousemove, (ev) => {
         if (!isMouseDown)
           return;
         isDragging = true;
-        $icon.style.left = ev.clientX - distance.x + "px";
-        $icon.style.top = ev.clientY - distance.y + "px";
+        rootDOM.style.left = ev.clientX - distance.x + "px";
+        rootDOM.style.top = ev.clientY - distance.y + "px";
       });
-      eventManager.addListener(id, "mouseup", () => {
+      hardware.addListener(id, eventScopesByKey.mouseup, () => {
         isMouseDown = false;
         isDragging = false;
-        $icon.style.cursor = "grab";
+        rootDOM.style.cursor = "grab";
       });
-      return $icon;
+      return rootDOM;
     };
-  }
-
-  // modules/graphical-user-interface/theme.js
-  var darkTheme = {
-    name: "dark",
-    backgroundColor: "#222222",
-    borderWidth: 1,
-    //px
-    borderStyle: "solid",
-    style: {
-      body: {
-        backgroundColor: "#222222",
-        color: "#ffffff",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
-      },
-      button: {
-        cursor: "pointer"
-      }
-    }
-  };
-  var lightTheme = {
-    name: "light",
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    //px
-    borderStyle: "solid",
-    style: {
-      body: {
-        backgroundColor: "#ffffff",
-        color: "#222222",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
-      },
-      button: {
-        cursor: "pointer"
-      }
-    }
-  };
-  var themeMap = {
-    dark: darkTheme,
-    light: lightTheme
-  };
-
-  // modules/graphical-user-interface/ThemeManager.js
-  var HEAD = document.head;
-  var BODY2 = document.body;
-  function ThemeManager(gui) {
-    let theme = null;
-    this.themeListeners = [];
-    function generateStyleDOM(theme2) {
-      const style = document.createElement("style");
-      for (let [selector, selectorValue] of Object.entries(theme2.style)) {
-        if (selector === "body") {
-          for (let [prop, propValue] of Object.entries(selectorValue)) {
-            BODY2.style[prop] = propValue;
-          }
-        } else if (selector === "button") {
-          let buttonStyle = "";
-          for (let [prop, propValue] of Object.entries(selectorValue)) {
-            buttonStyle += `${toKebabCase(prop)}: ${propValue}; `;
-          }
-          style.innerHTML += `button { ${buttonStyle} }`;
-        }
-      }
-      return style;
-    }
-    this.getTheme = () => theme;
-    this.setTheme = function(newTheme, callback) {
-      if (!newTheme)
-        throw Error("Unknown newTheme", newTheme);
-      if (typeof newTheme === "string" && themeMap[newTheme]) {
-        this.setTheme(themeMap[newTheme]);
-        return;
-      }
-      if (theme !== null)
-        HEAD.removeChild(theme.$style);
-      const style = generateStyleDOM(newTheme);
-      theme = { ...newTheme, $style: style };
-      HEAD.appendChild(style);
-      this.notify(theme);
-      if (callback)
-        callback(theme);
-    };
-    this.addListener = (fn) => {
-      this.themeListeners.push(fn);
-    };
-    this.notify = (theme2) => {
-      this.themeListeners.forEach((fn) => fn(theme2));
-    };
-  }
-  function toKebabCase(str) {
-    return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
   }
 
   // modules/graphical-user-interface/CustomWindow.js
@@ -317,7 +306,7 @@
     };
     return this;
   }
-  function CustomWindow(args, themeManager) {
+  function CustomWindow(args, themeManager4) {
     const self = this;
     const options = {
       id: Math.random().toString(36).slice(2, 9),
@@ -328,7 +317,7 @@
       },
       ...args
     };
-    themeManager.addListener((theme) => {
+    themeManager4.addListener((theme) => {
       this.$background.style.backgroundColor = theme.style.body.backgroundColor;
     });
     this.id = options.id;
@@ -345,7 +334,7 @@
     this.$wrapper = document.createElement("div");
     this.$wrapper.appendChild(this.$background);
     this.$window.appendChild(this.$wrapper);
-    this.$background.style.backgroundColor = themeManager.getTheme().style.body.backgroundColor;
+    this.$background.style.backgroundColor = themeManager4.getTheme().style.body.backgroundColor;
     this.header = new WindowHeader({
       ...options,
       name: this.name,
@@ -408,9 +397,112 @@
     this.body.$element.style.maxHeight = this.$wrapper.offsetHeight - this.header.$element.offsetHeight + "px";
   };
 
+  // modules/graphical-user-interface/theme.js
+  var darkTheme = {
+    name: "dark",
+    backgroundColor: "#222222",
+    borderWidth: 1,
+    //px
+    borderStyle: "solid",
+    style: {
+      body: {
+        backgroundColor: "#222222",
+        color: "#ffffff",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
+      },
+      button: {
+        cursor: "pointer"
+      }
+    }
+  };
+  var lightTheme = {
+    name: "light",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    //px
+    borderStyle: "solid",
+    style: {
+      body: {
+        backgroundColor: "#ffffff",
+        color: "#222222",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
+      },
+      button: {
+        cursor: "pointer"
+      }
+    }
+  };
+  var themeMap = {
+    dark: darkTheme,
+    light: lightTheme
+  };
+
+  // modules/graphical-user-interface/ThemeManager.js
+  var HEAD = document.head;
+  var BODY = document.body;
+  function ThemeManager() {
+    let theme = null;
+    this.themeListeners = [];
+    function generateStyleDOM(theme2) {
+      const style = document.createElement("style");
+      for (let [selector, selectorValue] of Object.entries(theme2.style)) {
+        if (selector === "body") {
+          for (let [prop, propValue] of Object.entries(selectorValue)) {
+            BODY.style[prop] = propValue;
+          }
+        } else if (selector === "button") {
+          let buttonStyle = "";
+          for (let [prop, propValue] of Object.entries(selectorValue)) {
+            buttonStyle += `${toKebabCase(prop)}: ${propValue}; `;
+          }
+          style.innerHTML += `button { ${buttonStyle} }`;
+        }
+      }
+      return style;
+    }
+    this.getTheme = () => theme;
+    this.setTheme = function(newTheme, callback) {
+      if (!newTheme)
+        throw Error("Unknown newTheme", newTheme);
+      if (typeof newTheme === "string" && themeMap[newTheme]) {
+        this.setTheme(themeMap[newTheme]);
+        return;
+      }
+      if (theme !== null)
+        HEAD.removeChild(theme.$style);
+      const style = generateStyleDOM(newTheme);
+      theme = { ...newTheme, $style: style };
+      HEAD.appendChild(style);
+      this.notify(theme);
+      if (callback)
+        callback(theme);
+    };
+    this.addListener = (fn) => {
+      this.themeListeners.push(fn);
+    };
+    this.notify = (theme2) => {
+      this.themeListeners.forEach((fn) => fn(theme2));
+    };
+  }
+  function toKebabCase(str) {
+    return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+  }
+  var instance4 = new ThemeManager();
+  var getInstance4 = () => {
+    if (!instance4)
+      instance4 = new ThemeManager();
+    return instance4;
+  };
+
   // modules/graphical-user-interface/WindowManager.js
-  var BODY3 = document.body;
-  function WindowManager(eventManager, themeManager) {
+  var hardware2 = getInstance2();
+  var themeManager = getInstance4();
+  var BODY2 = document.body;
+  var eventScopesByKey2 = {
+    mousemove: "mousemove",
+    mouseup: "mouseup"
+  };
+  function WindowManager() {
     const self = this;
     const windowByName = {};
     this.sendToTop = function(customWindow) {
@@ -508,8 +600,8 @@
       $window.onmousedown = prepareForInteraction;
       if (resizeable)
         $window.onmousemove = getProperCursor;
-      eventManager.addListener(customWindow.id, "mousemove", dragAndResize);
-      eventManager.addListener(customWindow.id, "mouseup", () => {
+      hardware2.addListener(customWindow.id, eventScopesByKey2.mousemove, dragAndResize);
+      hardware2.addListener(customWindow.id, eventScopesByKey2.mouseup, () => {
         isMouseDown = false;
         isResizing = false;
         isDragging = false;
@@ -527,20 +619,22 @@
       if (windowByName[customWindow.name])
         return;
       windowByName[customWindow.name] = customWindow;
-      eventManager.setListener(customWindow.id);
       if (options.draggable || options.resizeable) {
         initWindowInteraction(customWindow, options);
       }
       customWindow.addEventListener("close", function() {
         self.destroyWindow(customWindow.name);
       });
-      BODY3.appendChild(customWindow.$window);
+      BODY2.appendChild(customWindow.$window);
       customWindow.finalize();
       return customWindow;
     };
     this.destroyWindow = function(name) {
       const customWindow = windowByName[name];
-      eventManager.removeListener(customWindow.id);
+      for (let index = 0; index < Object.keys(eventScopesByKey2).length; index++) {
+        const scopeKey = Object.keys(eventScopesByKey2)[index];
+        hardware2.removeListener(`customWindow_${customWindow.id}`, scopeKey);
+      }
       delete windowByName[name];
     };
     this.closeAllWindow = function() {
@@ -564,99 +658,148 @@
     };
   }
 
+  // modules/graphical-user-interface/ContextMenuManager.js
+  var hardware3 = getInstance2();
+  var themeManager2 = getInstance4();
+  var BODY3 = document.body;
+  function ContextMenuManager() {
+    this.$contextMenu = void 0;
+    this.$contextMenus = [];
+    this.getContextMenu = () => {
+    };
+    this.showContextMenu = function(x, y, content) {
+      const $menu = document.createElement("div");
+      $menu.style.border = "1px solid";
+      $menu.style.padding = "8px";
+      $menu.style.position = "absolute";
+      $menu.style.zIndex = 9;
+      $menu.style.left = x + "px";
+      $menu.style.top = y + "px";
+      try {
+        $menu.style.backgroundColor = themeManager2.getTheme().style.body.backgroundColor;
+      } catch (error) {
+        console.error(error);
+      }
+      $menu.onclick = () => this.destroyContextMenu();
+      $menu.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      if (content) {
+        content.forEach((element) => {
+          element.style.display = "block";
+          $menu.appendChild(element);
+        });
+      } else {
+        this.$contextMenus.forEach((element) => {
+          $menu.appendChild(element);
+        });
+      }
+      this.$contextMenu = $menu;
+      BODY3.appendChild(this.$contextMenu);
+    };
+    this.moveContextMenu = function(x, y) {
+      this.$contextMenu.style.left = x + "px";
+      this.$contextMenu.style.top = y + "px";
+    };
+    this.destroyContextMenu = function() {
+      if (!this.$contextMenu)
+        return;
+      this.$contextMenu.remove();
+      this.$contextMenu = void 0;
+    };
+    this.addToContextMenu = function(dom) {
+      dom.style.display = "block";
+      this.$contextMenus.push(dom);
+    };
+    this.init = function() {
+      hardware3.addListener("UI", "contextmenu", (e) => {
+        e.preventDefault();
+        this.getContextMenu(e.target);
+        if (this.$contextMenu) {
+          this.moveContextMenu(e.clientX, e.clientY);
+          return;
+        }
+        this.showContextMenu(e.clientX, e.clientY);
+      });
+      hardware3.addListener("UI", "mousedown", (e) => {
+        if (!this.$contextMenu || e.target === this.$contextMenu)
+          return;
+        if (this.$contextMenu.contains(e.target))
+          return;
+        this.destroyContextMenu();
+      });
+    };
+  }
+
   // modules/graphical-user-interface/index.js
-  var instance;
+  var iconManager = new IconManager();
+  var themeManager3 = getInstance4();
+  var windowManager = new WindowManager();
+  var contextMenuManager = new ContextMenuManager();
   function GraphicalUserInterface() {
-    const self = this;
-    const eventManager = new EventManager(self);
-    const themeManager = new ThemeManager(self);
-    const windowManager = new WindowManager(eventManager, themeManager);
-    const contextMenuManager = new ContextMenuManager(themeManager);
-    const iconManager = new IconManager(eventManager);
-    this.themeListeners = [];
-    this.setWindowContent = (...args) => windowManager.setWindowContent(...args);
-    this.sendToTop = (...args) => windowManager.sendToTop(...args);
-    this.createWindow = (...args) => windowManager.createWindow(...args);
-    this.createIcon = (id, dom) => iconManager.createIcon(id, dom);
-    this.getTheme = () => themeManager.getTheme();
-    this.showContextMenu = (...args) => contextMenuManager.showContextMenu(...args);
-    this.setTheme = (newTheme) => themeManager.setTheme(newTheme, (theme) => {
-      windowManager.notify(theme);
-    });
-    this.addThemeListener = (cb) => themeManager.addListener(cb);
-    this.closeAllWindow = () => windowManager.closeAllWindow();
     this.init = () => {
       this.setTheme("dark");
-      eventManager.init();
-      contextMenuManager.initEventListeners();
+      contextMenuManager.init();
     };
     return this;
   }
-  var getInstance = () => {
-    if (!instance)
-      instance = new GraphicalUserInterface();
-    return instance;
+  GraphicalUserInterface.prototype.getTheme = themeManager3.getTheme.bind(themeManager3);
+  GraphicalUserInterface.prototype.createIcon = iconManager.createIcon.bind(iconManager);
+  GraphicalUserInterface.prototype.sendToTop = windowManager.sendToTop.bind(windowManager);
+  GraphicalUserInterface.prototype.createWindow = windowManager.createWindow.bind(windowManager);
+  GraphicalUserInterface.prototype.addThemeListener = themeManager3.addListener.bind(themeManager3);
+  GraphicalUserInterface.prototype.closeAllWindow = windowManager.closeAllWindow.bind(windowManager);
+  GraphicalUserInterface.prototype.setWindowContent = windowManager.setWindowContent.bind(windowManager);
+  GraphicalUserInterface.prototype.showContextMenu = contextMenuManager.showContextMenu.bind(contextMenuManager);
+  GraphicalUserInterface.prototype.setTheme = (newTheme) => themeManager3.setTheme(newTheme, (theme) => {
+    windowManager.notify(theme);
+  });
+  var instance5 = new GraphicalUserInterface();
+  var getInstance5 = () => {
+    if (!instance5)
+      instance5 = new GraphicalUserInterface();
+    return instance5;
   };
 
-  // modules/software-manager.js
-  var instance2;
-  function SoftwareManager() {
-    this.accessKey = "software";
-    this.software = /* @__PURE__ */ new Map();
-    this.listener = {
-      install: []
+  // modules/softwares/dock/dock.js
+  var ui = getInstance5();
+  var hardware4 = getInstance2();
+  var softwareManager = getInstance3();
+  var NAMESPACE = "Dock";
+  function Dock() {
+    const self = this;
+    this.name = NAMESPACE;
+    softwareManager.addEventListener("install", () => {
+      this.refresh();
+    });
+    this.ui = new DockUI(ui.getTheme());
+    ui.addThemeListener((theme) => self.ui.setTheme(theme));
+    hardware4.addListener(NAMESPACE, "mousedown", (e) => {
+      if (e.target !== self.ui.getMenuElement() && e.target !== self.ui.getMenuTrigger() && e.target instanceof HTMLButtonElement === false) {
+        self.ui.closeMenu();
+      }
+    });
+    this.refresh = () => {
+      self.ui.clear();
+      softwareManager.getAllExcepts([NAMESPACE, "Desktop"]).forEach(function(app) {
+        const $trigger = document.createElement("button");
+        $trigger.innerHTML = app.name;
+        $trigger.onclick = () => app.start();
+        self.ui.addToMenu($trigger);
+      });
+    };
+    this.start = () => {
+      this.ui.render();
+      this.refresh();
+    };
+    this.stop = () => {
+      this.ui.destroy();
     };
   }
-  SoftwareManager.prototype.install = function(software) {
-    if (!software)
-      throw Error("Undefined software.");
-    if (!software.name)
-      throw Error("Software name is required.");
-    if (!software.start)
-      throw Error("Software start function is required.");
-    this.software.set(software.name, software);
-    this.listener.install.forEach((fn) => fn());
-  };
-  SoftwareManager.prototype.getAllExcepts = function(filter) {
-    let softwares = [];
-    for (const [key, value] of this.software) {
-      if (!filter.includes(key))
-        softwares.push(value);
-    }
-    return softwares;
-  };
-  SoftwareManager.prototype.getAllExcept = function(name) {
-    let softwares = [];
-    for (const [key, value] of this.software) {
-      if (key !== name)
-        softwares.push(value);
-    }
-    return softwares;
-  };
-  SoftwareManager.prototype.get = function(name) {
-    if (!name || !this.software.get(name))
-      throw Error("Unknown software.");
-    return this.software.get(name);
-  };
-  SoftwareManager.prototype.run = function(key, payload) {
-    const s = this.software.get(key);
-    if (!s)
-      throw Error("unknown software:", key);
-    s.start(payload);
-  };
-  SoftwareManager.prototype.addEventListener = function(event, cb) {
-    if (!this.listener[event])
-      throw Error("Unknown event.", event);
-    this.listener[event].push(cb);
-  };
-  var getInstance2 = () => {
-    if (!instance2)
-      instance2 = new SoftwareManager();
-    return instance2;
-  };
 
   // modules/storage.js
-  var instance3;
+  var instance6;
   function Storage() {
     let size = 0;
     const data = /* @__PURE__ */ new Map();
@@ -735,15 +878,15 @@
       console.info(data);
     };
   }
-  var getInstance3 = () => {
-    if (!instance3)
-      instance3 = new Storage();
-    return instance3;
+  var getInstance6 = () => {
+    if (!instance6)
+      instance6 = new Storage();
+    return instance6;
   };
 
   // modules/file-system.js
-  var instance4;
-  var storage = getInstance3();
+  var instance7;
+  var storage = getInstance6();
   function CustomFileSystem() {
     const MAX_INT = 9007199254740991;
     const MAX_INT_MOD = -3;
@@ -877,10 +1020,10 @@
   CustomFileSystem.CREATE_DIRECTORY = "createDirectory";
   CustomFileSystem.DELETE = "delete";
   CustomFileSystem.MOVE = "move";
-  var getInstance4 = () => {
-    if (!instance4)
-      instance4 = new CustomFileSystem();
-    return instance4;
+  var getInstance7 = () => {
+    if (!instance7)
+      instance7 = new CustomFileSystem();
+    return instance7;
   };
   var MOVE = CustomFileSystem.MOVE;
   var DELETE = CustomFileSystem.DELETE;
@@ -889,11 +1032,12 @@
   var ADD_TO_STORAGE = CustomFileSystem.ADD_TO_STORAGE;
 
   // modules/softwares/desktop.js
-  var fs = getInstance4();
-  var ui = getInstance();
+  var fs = getInstance7();
+  var ui2 = getInstance5();
+  var NAMESPACE2 = "Desktop";
   function Desktop(os2) {
     const self = this;
-    this.name = "Desktop";
+    this.name = NAMESPACE2;
     this.path = "/desktop/";
     this.iconDomMap = {};
     const $desktop = document.createElement("div");
@@ -917,13 +1061,13 @@
       const $closeAllWindow = document.createElement("button");
       $closeAllWindow.innerHTML = "Close All Window";
       $closeAllWindow.onclick = function() {
-        ui.closeAllWindow();
+        ui2.closeAllWindow();
       };
       const $contextMenus = [
         $closeAllWindow,
         $createFile
       ];
-      ui.showContextMenu(e.clientX, e.clientY, $contextMenus);
+      ui2.showContextMenu(e.clientX, e.clientY, $contextMenus);
     };
     const desktopDirectory = fs.createSystemDirectory("desktop");
     fs.addToStorage(desktopDirectory);
@@ -940,7 +1084,7 @@
       $d.style.maxWidth = "100px";
       $d.style.maxHeight = "100px";
       $d.style.overflow = "auto";
-      const $icon = ui.createIcon(data.id, $d);
+      const $icon = ui2.createIcon(data.id, $d, data.type);
       if (data.type === "file") {
         $icon.ondblclick = () => {
           os2.run("File Reader", data);
@@ -948,7 +1092,7 @@
         $icon.oncontextmenu = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          ui.destroyContextMenu();
+          ui2.destroyContextMenu();
           const $contextMenus = [];
           const $open = document.createElement("button");
           $open.innerHTML = "Open";
@@ -956,7 +1100,7 @@
             os2.run("File Reader", data);
           };
           $contextMenus.push($open);
-          ui.showContextMenu(e.clientX, e.clientY, $contextMenus);
+          ui2.showContextMenu(e.clientX, e.clientY, $contextMenus);
         };
       }
       self.iconDomMap[data.id] = $icon;
@@ -992,106 +1136,37 @@
     };
   }
 
-  // modules/softwares/dock/dock.ui.js
-  function DockUI(theme) {
-    const $element = document.createElement("div");
-    $element.style.boxSizing = "border-box";
-    $element.style.position = "fixed";
-    $element.style.zIndex = 9;
-    $element.style.left = 0;
-    $element.style.bottom = 0;
-    $element.style.width = "100%";
-    $element.style.padding = "8px";
-    $element.style.boxSizing = "border-box";
-    $element.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $element.style.backgroundColor = theme.backgroundColor;
-    const $layout = document.createElement("table");
-    const $menuTriggerTd = document.createElement("td");
-    $menuTriggerTd.setAttribute("width", "100%");
-    const $menuTrigger = document.createElement("button");
-    $menuTrigger.innerHTML = "Menu";
-    $menuTriggerTd.appendChild($menuTrigger);
-    $layout.appendChild($menuTriggerTd);
-    const $clockTd = document.createElement("td");
-    const $clock = document.createElement("span");
-    const now = /* @__PURE__ */ new Date();
-    $clock.innerHTML = `${now.getHours()}:${now.getMinutes()}`;
-    $clockTd.appendChild($clock);
-    $layout.appendChild($clockTd);
-    $element.appendChild($layout);
-    const $menu = document.createElement("div");
-    $menu.style.display = "none";
-    $menu.style.position = "absolute";
-    $menu.style.left = 0;
-    $menu.style.width = "200px";
-    $menu.style.height = "200px";
-    $menu.style.padding = "8px";
-    $menu.style.borderRight = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $menu.style.borderTop = `${theme.borderWidth}px ${theme.borderStyle}`;
-    $menu.style.backgroundColor = theme.backgroundColor;
-    $element.appendChild($menu);
-    setTimeout(() => {
-      $menu.style.bottom = $element.offsetHeight + "px";
-    }, 200);
-    this.setTheme = function(theme2) {
-      $element.style.backgroundColor = theme2.style.body.backgroundColor;
-      $menu.style.backgroundColor = theme2.style.body.backgroundColor;
-    };
-    this.addToMenu = (element) => {
-      element.style.display = "block";
-      $menu.appendChild(element);
-    };
-    this.clear = () => $menu.innerHTML = "";
-    this.closeMenu = () => $menu.style.display = "none";
-    $menuTrigger.onclick = () => {
-      if ($menu.style.display === "none")
-        $menu.style.display = "block";
-      else if ($menu.style.display === "block")
-        $menu.style.display = "none";
-    };
-    this.getMenuElement = () => $menu;
-    this.getMenuTrigger = () => $menuTrigger;
-    this.render = () => document.body.appendChild($element);
-    this.destroy = () => $element.remove();
-  }
-
-  // modules/softwares/dock/dock.js
-  var ui2 = getInstance();
-  function Dock() {
-    const self = this;
-    this.name = "Dock";
-    const softwareManager = getInstance2();
-    softwareManager.addEventListener("install", () => {
-      this.refresh();
-    });
-    this.ui = new DockUI(ui2.getTheme());
-    ui2.addThemeListener((theme) => self.ui.setTheme(theme));
-    hardware.addListener("Dock", "mousedown", (e) => {
-      if (e.target !== self.ui.getMenuElement() && e.target !== self.ui.getMenuTrigger() && e.target instanceof HTMLButtonElement === false) {
-        self.ui.closeMenu();
-      }
-    });
-    this.refresh = () => {
-      self.ui.clear();
-      softwareManager.getAllExcepts(["Dock", "Desktop"]).forEach(function(app) {
-        const $trigger = document.createElement("button");
-        $trigger.innerHTML = app.name;
-        $trigger.onclick = () => app.start();
-        self.ui.addToMenu($trigger);
-      });
+  // modules/softwares/settings.js
+  var ui3 = getInstance5();
+  function Settings() {
+    this.name = "Settings";
+    this.getContent = function() {
+      const $content = document.createElement("div");
+      const $darkTheme = document.createElement("button");
+      $darkTheme.onclick = function() {
+        ui3.setTheme("dark");
+      };
+      $darkTheme.innerHTML = "Change to Dark Theme";
+      $content.appendChild($darkTheme);
+      const $lightTheme = document.createElement("button");
+      $lightTheme.onclick = function() {
+        ui3.setTheme("light");
+      };
+      $lightTheme.innerHTML = "Change to Light Theme";
+      $content.appendChild($lightTheme);
+      return $content;
     };
     this.start = () => {
-      this.ui.render();
-      this.refresh();
-    };
-    this.stop = () => {
-      this.ui.destroy();
+      const customWindow = ui3.createWindow({ name: this.name, resizeable: true, draggable: true });
+      ui3.sendToTop(customWindow);
+      const $content = this.getContent();
+      ui3.setWindowContent(this.name, $content);
     };
   }
 
   // modules/softwares/file-manager.js
-  var fs2 = getInstance4();
-  var ui3 = getInstance();
+  var fs2 = getInstance7();
+  var ui4 = getInstance5();
   function FileManager(os2) {
     const self = this;
     this.name = "File Manager";
@@ -1149,7 +1224,7 @@
     };
     this.reload = () => {
       const $root = this.getRoot();
-      ui3.setWindowContent(this.name, $root);
+      ui4.setWindowContent(this.name, $root);
     };
     this.openDirectory = (directory) => {
       this.currentPath = directory.path;
@@ -1268,7 +1343,7 @@
             };
             $contextMenus.push($delete);
           }
-          ui3.showContextMenu(e.clientX, e.clientY, $contextMenus);
+          ui4.showContextMenu(e.clientX, e.clientY, $contextMenus);
         };
         tr.ondblclick = () => {
           if (d.type === "file") {
@@ -1297,13 +1372,13 @@
       this.reload();
     });
     this.start = () => {
-      ui3.createWindow({ name: this.name, resizeable: true, draggable: true, initialWidth: 300 });
+      ui4.createWindow({ name: this.name, resizeable: true, draggable: true, initialWidth: 300 });
       this.reload();
     };
   }
 
   // modules/softwares/file-reader.js
-  var ui4 = getInstance();
+  var ui5 = getInstance5();
   function CustomFileReader() {
     this.name = "File Reader";
     this.file = void 0;
@@ -1311,7 +1386,7 @@
       if (!this.file) {
         const $open = document.createElement("button");
         $open.onclick = function() {
-          ui4.createWindow({ name: "file prompt", resizeable: true, draggable: true });
+          ui5.createWindow({ name: "file prompt", resizeable: true, draggable: true });
         };
         $open.innerHTML = "Open File";
         return $open;
@@ -1327,34 +1402,6 @@
     this.start = (file) => {
       if (file)
         this.file = file;
-      const customWindow = ui4.createWindow({ name: this.name, resizeable: true, draggable: true });
-      ui4.sendToTop(customWindow);
-      const $content = this.getContent();
-      ui4.setWindowContent(this.name, $content);
-    };
-  }
-
-  // modules/softwares/settings.js
-  var ui5 = getInstance();
-  function Settings() {
-    this.name = "Settings";
-    this.getContent = function() {
-      const $content = document.createElement("div");
-      const $darkTheme = document.createElement("button");
-      $darkTheme.onclick = function() {
-        ui5.setTheme("dark");
-      };
-      $darkTheme.innerHTML = "Change to Dark Theme";
-      $content.appendChild($darkTheme);
-      const $lightTheme = document.createElement("button");
-      $lightTheme.onclick = function() {
-        ui5.setTheme("light");
-      };
-      $lightTheme.innerHTML = "Change to Light Theme";
-      $content.appendChild($lightTheme);
-      return $content;
-    };
-    this.start = () => {
       const customWindow = ui5.createWindow({ name: this.name, resizeable: true, draggable: true });
       ui5.sendToTop(customWindow);
       const $content = this.getContent();
@@ -1363,7 +1410,7 @@
   }
 
   // modules/softwares/window-creator.js
-  var ui6 = getInstance();
+  var ui6 = getInstance5();
   function WindowCreator() {
     this.name = "Window Creator";
     this.start = () => {
@@ -1378,33 +1425,35 @@
   }
 
   // modules/operating-system.js
-  var instance5;
+  var ui7 = getInstance5();
+  var softwareManager2 = getInstance3();
   function OperatingSystem() {
-    const ui7 = getInstance();
-    const softwareManager = getInstance2();
     this.boot = () => {
       ui7.init();
-      softwareManager.install(new Dock());
-      softwareManager.install(new Settings());
-      softwareManager.install(new FileManager(instance5));
-      softwareManager.install(new WindowCreator());
-      softwareManager.install(new CustomFileReader());
-      softwareManager.install(new Desktop(instance5));
-      softwareManager.get("Dock").start();
-      softwareManager.get("Desktop").start();
+      this.install(new Dock());
+      this.install(new Settings());
+      this.install(new CustomFileReader());
+      this.install(new Desktop(instance8));
+      this.install(new WindowCreator());
+      this.install(new FileManager(instance8));
+      this.get(NAMESPACE).start();
+      this.get(NAMESPACE2).start();
     };
     this.run = function(appKey, payload) {
-      softwareManager.run(appKey, payload);
+      this.run(appKey, payload);
     };
   }
-  var getInstance5 = () => {
-    if (!instance5)
-      instance5 = new OperatingSystem();
-    return instance5;
+  OperatingSystem.prototype.get = softwareManager2.get.bind(softwareManager2);
+  OperatingSystem.prototype.install = softwareManager2.install.bind(softwareManager2);
+  var instance8 = new OperatingSystem();
+  var getInstance8 = () => {
+    if (!instance8)
+      instance8 = new OperatingSystem();
+    return instance8;
   };
 
   // main.js
-  var os = getInstance5();
+  var os = getInstance8();
   os.boot();
 })();
 //# sourceMappingURL=out.js.map
