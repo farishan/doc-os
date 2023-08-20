@@ -61,6 +61,8 @@ function ThemeManager() {
   this.notify = (theme) => {
     this.themeListeners.forEach(fn => fn(theme))
   }
+
+  this.setTheme('dark')
 }
 
 function toKebabCase(str) {

@@ -72,6 +72,7 @@ function CustomFileSystem() {
 /* facades */
 CustomFileSystem.prototype.get = storage.get.bind(storage)
 CustomFileSystem.prototype.set = storage.set.bind(storage)
+CustomFileSystem.prototype.getWithPath = storage.getWithPath.bind(storage)
 CustomFileSystem.prototype.createDirectory = directoryManager.create.bind(directoryManager)
 CustomFileSystem.prototype.createSystemDirectory = directoryManager.createSystemDirectory.bind(directoryManager)
 CustomFileSystem.prototype.listenToDirectory = directoryManager.addListener.bind(directoryManager)

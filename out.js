@@ -66,7 +66,7 @@
     return instance;
   };
 
-  // modules/event-manager.js
+  // modules/event-manager/index.js
   function EventManager() {
     const eventsByKey = {
       // 'event_key': () => {}
@@ -438,6 +438,7 @@
     this.notify = (theme2) => {
       this.themeListeners.forEach((fn) => fn(theme2));
     };
+    this.setTheme("dark");
   }
   function toKebabCase(str) {
     return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
@@ -844,7 +845,7 @@
   };
 
   // modules/storage/index.js
-  function Storage() {
+  function CustomStorage() {
     const data = /* @__PURE__ */ new Map();
     let size = 0;
     this.add = function(k, v) {
@@ -885,7 +886,8 @@
         return;
       pathObject.data.forEach((d) => result.set(d.id, d));
     };
-    this.get = function(path) {
+    this.get = (k) => data.get(k);
+    this.getWithPath = function(path) {
       if (!path)
         throw Error("Invalid path.", path);
       let result = /* @__PURE__ */ new Map();
@@ -917,8 +919,10 @@
       }
     };
     this.log = () => console.info(data);
+    this.write = this.set.bind(this);
+    this.read = this.get.bind(this);
   }
-  var storage = new Storage();
+  var storage = new CustomStorage();
 
   // modules/file-system/constants.js
   var NAMESPACE = "CustomFileSystem";
@@ -1047,6 +1051,7 @@
   }
   CustomFileSystem.prototype.get = storage.get.bind(storage);
   CustomFileSystem.prototype.set = storage.set.bind(storage);
+  CustomFileSystem.prototype.getWithPath = storage.getWithPath.bind(storage);
   CustomFileSystem.prototype.createDirectory = directoryManager.create.bind(directoryManager);
   CustomFileSystem.prototype.createSystemDirectory = directoryManager.createSystemDirectory.bind(directoryManager);
   CustomFileSystem.prototype.listenToDirectory = directoryManager.addListener.bind(directoryManager);
@@ -1137,7 +1142,7 @@
       return th;
     }
     this.generateTable = () => {
-      const data = fs.get(this.currentPath);
+      const data = fs.getWithPath(this.currentPath);
       const $table = document.createElement("table");
       $table.style.borderCollapse = "collapse";
       $table.style.width = "100%";

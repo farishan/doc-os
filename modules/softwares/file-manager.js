@@ -105,7 +105,7 @@ function FileManager(os) {
   }
 
   this.generateTable = () => {
-    const data = fs.get(this.currentPath)
+    const data = fs.getWithPath(this.currentPath)
     const $table = document.createElement('table')
     $table.style.borderCollapse = 'collapse'
     $table.style.width = '100%'

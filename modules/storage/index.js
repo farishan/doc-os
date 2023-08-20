@@ -1,4 +1,4 @@
-function Storage() {
+function CustomStorage() {
   const data = new Map()
   let size = 0
 
@@ -44,7 +44,9 @@ function Storage() {
     pathObject.data.forEach(d => result.set(d.id, d))
   }
 
-  this.get = function (path) {
+  this.get = (k) => data.get(k)
+
+  this.getWithPath = function (path) {
     if (!path) throw Error('Invalid path.', path)
 
     let result = new Map()
@@ -80,7 +82,12 @@ function Storage() {
   }
 
   this.log = () => console.info(data)
+
+  /* aliases */
+  this.write = this.set.bind(this)
+  this.read = this.get.bind(this)
 }
 
-const storage = new Storage()
-export { Storage, storage }
+
+const storage = new CustomStorage()
+export { CustomStorage, storage }
