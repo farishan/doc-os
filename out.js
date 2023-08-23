@@ -1,4 +1,17 @@
 (() => {
+  // modules/create-scene.js
+  function createScene(child) {
+    const scene = document.createElement("div");
+    scene.style.width = "100%";
+    scene.style.height = "100%";
+    scene.style.display = "flex";
+    scene.style.position = "fixed";
+    scene.style.alignItems = "center";
+    scene.style.justifyContent = "center";
+    scene.appendChild(child);
+    return scene;
+  }
+
   // modules/command-line-interface/parse-line-command.js
   function parseLineCommand(lineCommand) {
     const characters = lineCommand.split("");
@@ -1593,6 +1606,13 @@
 
   // main.js
   var os = getInstance9();
-  os.boot();
+  var $boot = document.createElement("button");
+  $boot.innerHTML = "click me to boot the OS";
+  $boot.onclick = () => {
+    os.boot();
+    $boot.remove();
+  };
+  var bootingScene = createScene($boot);
+  document.body.appendChild(bootingScene);
 })();
 //# sourceMappingURL=out.js.map
